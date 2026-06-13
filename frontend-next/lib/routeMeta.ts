@@ -65,6 +65,55 @@ export const routeMeta: Record<string, RouteMeta> = {
   '/admin/orders/plans': { title: 'Subscription Plans', description: 'Manage payment plans', originalComponent: 'AdminPaymentPlansView.vue', requiresAuth: true, requiresAdmin: true },
 }
 
+/**
+ * Per-path i18n title/description keys, mirroring the Vue router `meta.titleKey`
+ * / `meta.descriptionKey`. The AppHeader resolves these against the active
+ * locale to render the page title and subtitle.
+ */
+export interface RouteTitleKeys {
+  titleKey?: string
+  descriptionKey?: string
+}
+
+export const routeTitleKeys: Record<string, RouteTitleKeys> = {
+  '/dashboard': { titleKey: 'dashboard.title', descriptionKey: 'dashboard.welcomeMessage' },
+  '/keys': { titleKey: 'keys.title', descriptionKey: 'keys.description' },
+  '/usage': { titleKey: 'usage.title', descriptionKey: 'usage.description' },
+  '/redeem': { titleKey: 'redeem.title', descriptionKey: 'redeem.description' },
+  '/affiliate': { titleKey: 'affiliate.title', descriptionKey: 'affiliate.description' },
+  '/available-channels': { titleKey: 'availableChannels.title', descriptionKey: 'availableChannels.description' },
+  '/profile': { titleKey: 'profile.title', descriptionKey: 'profile.description' },
+  '/subscriptions': { titleKey: 'userSubscriptions.title', descriptionKey: 'userSubscriptions.description' },
+  '/purchase': { titleKey: 'nav.buySubscription', descriptionKey: 'purchase.description' },
+  '/orders': { titleKey: 'nav.myOrders' },
+  '/monitor': { titleKey: 'nav.channelStatus' },
+  '/payment/qrcode': { titleKey: 'payment.qr.scanToPay' },
+  '/payment/result': { titleKey: 'payment.result.success' },
+  '/payment/stripe': { titleKey: 'payment.stripePay' },
+  '/payment/airwallex': { titleKey: 'payment.airwallexPay' },
+  '/admin/dashboard': { titleKey: 'admin.dashboard.title', descriptionKey: 'admin.dashboard.description' },
+  '/admin/ops': { titleKey: 'admin.ops.title', descriptionKey: 'admin.ops.description' },
+  '/admin/users': { titleKey: 'admin.users.title', descriptionKey: 'admin.users.description' },
+  '/admin/groups': { titleKey: 'admin.groups.title', descriptionKey: 'admin.groups.description' },
+  '/admin/channels/pricing': { titleKey: 'admin.channels.title', descriptionKey: 'admin.channels.description' },
+  '/admin/channels/monitor': { titleKey: 'admin.channelMonitor.title', descriptionKey: 'admin.channelMonitor.description' },
+  '/admin/subscriptions': { titleKey: 'admin.subscriptions.title', descriptionKey: 'admin.subscriptions.description' },
+  '/admin/accounts': { titleKey: 'admin.accounts.title', descriptionKey: 'admin.accounts.description' },
+  '/admin/announcements': { titleKey: 'admin.announcements.title', descriptionKey: 'admin.announcements.description' },
+  '/admin/proxies': { titleKey: 'admin.proxies.title', descriptionKey: 'admin.proxies.description' },
+  '/admin/redeem': { titleKey: 'admin.redeem.title', descriptionKey: 'admin.redeem.description' },
+  '/admin/promo-codes': { titleKey: 'admin.promo.title', descriptionKey: 'admin.promo.description' },
+  '/admin/settings': { titleKey: 'admin.settings.title', descriptionKey: 'admin.settings.description' },
+  '/admin/risk-control': { titleKey: 'admin.riskControl.title', descriptionKey: 'admin.riskControl.description' },
+  '/admin/usage': { titleKey: 'admin.usage.title', descriptionKey: 'admin.usage.description' },
+  '/admin/affiliates/invites': { titleKey: 'nav.affiliateInviteRecords', descriptionKey: 'admin.affiliates.invitesDescription' },
+  '/admin/affiliates/rebates': { titleKey: 'nav.affiliateRebateRecords', descriptionKey: 'admin.affiliates.rebatesDescription' },
+  '/admin/affiliates/transfers': { titleKey: 'nav.affiliateTransferRecords', descriptionKey: 'admin.affiliates.transfersDescription' },
+  '/admin/orders/dashboard': { titleKey: 'nav.paymentDashboard' },
+  '/admin/orders': { titleKey: 'nav.orderManagement' },
+  '/admin/orders/plans': { titleKey: 'nav.paymentPlans' },
+}
+
 export const dynamicRoutePatterns: Array<{ prefix: string; meta: RouteMeta }> = [
   {
     prefix: '/legal/',

@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient'
+import type { CustomMenuItem } from './types'
 
 export interface AdminSystemSettings {
   site_name?: string
@@ -7,6 +8,10 @@ export interface AdminSystemSettings {
   available_channels_enabled?: boolean
   affiliate_enabled?: boolean
   channel_monitor_enabled?: boolean
+  ops_monitoring_enabled?: boolean
+  ops_realtime_monitoring_enabled?: boolean
+  ops_query_mode_default?: string
+  custom_menu_items?: CustomMenuItem[]
 }
 
 export type UpdateAdminSettingsRequest = Partial<AdminSystemSettings>

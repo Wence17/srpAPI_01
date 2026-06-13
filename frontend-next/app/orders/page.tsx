@@ -1,116 +1,96 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import PageShell from '@/components/PageShell'
-import { paymentAPI, type OrderStatus, type PaymentOrder } from '@/lib/payment'
+import { useI18n } from '@/lib/i18n/I18nProvider'
+import { useApp } from '@/context/AppContext'
+import { paymentAPI } from '@/lib/payment/api'
+import { extractI18nErrorMessage } from '@/lib/apiError'
+import type { PaymentOrder } from '@/lib/payment/types'
+import AppLayout from '@/components/layout/AppLayout'
+import Pagination from '@/components/common/Pagination'
+import BaseDialog from '@/components/common/BaseDialog'
+import Select from '@/components/common/Select'
+import Icon from '@/components/icons/Icon'
+import OrderTable from '@/components/payment/OrderTable'
 
-const pageSize = 20
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString()
-}
-
-function formatMoney(value: number, currency = 'USD') {
-  return `${currency} ${value.toFixed(2)}`
-}
-
-export default function MyOrdersPage() {
+export default function UserOrdersPage() {
+  const { t } = useI18n()
   const router = useRouter()
+  const appStore = useApp()
+
+  const [loading, setLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
   const [orders, setOrders] = useState<PaymentOrder[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<OrderStatus | 'all'>('all')
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [cancelOrderId, setCancelOrderId] = useState<number | null>(null)
+  const [refundEligibleProviders, setRefundEligibleProviders] = useState<Set<string>>(new Set())
+  const [currentFilter, setCurrentFilter] = useState('')
+  const [cancelTargetId, setCancelTargetId] = useState<number | null>(null)
   const [refundTarget, setRefundTarget] = useState<PaymentOrder | null>(null)
   const [refundReason, setRefundReason] = useState('')
-  const [actionLoading, setActionLoading] = useState(false)
-  const [statusMessage, setStatusMessage] = useState<string | null>(null)
-  const [refundEligibleProviders, setRefundEligibleProviders] = useState<Set<string>>(new Set())
+  const [pagination, setPagination] = useState({ page: 1, page_size: 20, total: 0 })
+
+  const currentFilterRef = useRef(currentFilter)
+  currentFilterRef.current = currentFilter
+  const paginationRef = useRef(pagination)
+  paginationRef.current = pagination
 
   const statusFilters = useMemo(
     () => [
-      { value: 'all', label: 'All statuses' },
-      { value: 'PENDING', label: 'Pending' },
-      { value: 'PAID', label: 'Paid' },
-      { value: 'RECHARGING', label: 'Recharging' },
-      { value: 'COMPLETED', label: 'Completed' },
-      { value: 'EXPIRED', label: 'Expired' },
-      { value: 'CANCELLED', label: 'Cancelled' },
-      { value: 'FAILED', label: 'Failed' },
-      { value: 'REFUND_REQUESTED', label: 'Refund requested' },
-      { value: 'REFUNDING', label: 'Refunding' },
-      { value: 'PARTIALLY_REFUNDED', label: 'Partially refunded' },
-      { value: 'REFUNDED', label: 'Refunded' },
-      { value: 'REFUND_FAILED', label: 'Refund failed' },
+      { value: '', label: t('common.all') },
+      { value: 'PENDING', label: t('payment.status.pending') },
+      { value: 'COMPLETED', label: t('payment.status.completed') },
+      { value: 'FAILED', label: t('payment.status.failed') },
+      { value: 'REFUNDED', label: t('payment.status.refunded') },
     ],
-    []
+    [t],
   )
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadOrders() {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await paymentAPI.getMyOrders({
-          page,
-          page_size: pageSize,
-          status: status === 'all' ? undefined : status,
-        })
-
-        if (cancelled) return
-        setOrders(response.items)
-        setTotal(response.total)
-      } catch (err) {
-        if (cancelled) return
-        setError((err as Error)?.message || 'Unable to load your orders.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await paymentAPI.getMyOrders({
+        page: paginationRef.current.page,
+        page_size: paginationRef.current.page_size,
+        status: currentFilterRef.current || undefined,
+      })
+      setOrders(res.data.items || [])
+      setPagination((prev) => ({ ...prev, total: res.data.total || 0 }))
+    } catch (err: unknown) {
+      appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+    } finally {
+      setLoading(false)
     }
+  }, [appStore, t])
 
-    loadOrders()
-    return () => {
-      cancelled = true
-    }
-  }, [page, status])
+  function handlePageChange(page: number) {
+    paginationRef.current = { ...paginationRef.current, page }
+    setPagination((prev) => ({ ...prev, page }))
+    fetchOrders()
+  }
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadRefundEligibleProviders() {
-      try {
-        const response = await paymentAPI.getRefundEligibleProviders()
-        if (cancelled) return
-        setRefundEligibleProviders(new Set(response.provider_instance_ids || []))
-      } catch {
-        // ignore and keep refund button hidden when providers are unavailable
-      }
-    }
-
-    loadRefundEligibleProviders()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!statusMessage) return
-    const timeout = window.setTimeout(() => setStatusMessage(null), 4000)
-    return () => window.clearTimeout(timeout)
-  }, [statusMessage])
-
-  function handlePageChange(nextPage: number) {
-    setPage(nextPage)
+  function handlePageSizeChange(size: number) {
+    paginationRef.current = { ...paginationRef.current, page_size: size, page: 1 }
+    setPagination((prev) => ({ ...prev, page_size: size, page: 1 }))
+    fetchOrders()
   }
 
   function handleCancel(orderId: number) {
-    setCancelOrderId(orderId)
+    setCancelTargetId(orderId)
+  }
+
+  async function confirmCancel() {
+    if (!cancelTargetId) return
+    setActionLoading(true)
+    try {
+      await paymentAPI.cancelOrder(cancelTargetId)
+      appStore.showSuccess(t('common.success'))
+      setCancelTargetId(null)
+      await fetchOrders()
+    } catch (err: unknown) {
+      appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   function openRefundDialog(order: PaymentOrder) {
@@ -118,276 +98,181 @@ export default function MyOrdersPage() {
     setRefundReason('')
   }
 
-  function canRequestRefund(order: PaymentOrder) {
-    return order.status === 'COMPLETED' && !!order.provider_instance_id && refundEligibleProviders.has(order.provider_instance_id)
-  }
-
-  async function confirmCancel() {
-    if (!cancelOrderId) return
-    setActionLoading(true)
-
-    try {
-      await paymentAPI.cancelOrder(cancelOrderId)
-      setStatusMessage('Order cancellation requested successfully.')
-      setCancelOrderId(null)
-      setPage(1)
-    } catch (err) {
-      setStatusMessage((err as Error)?.message || 'Unable to cancel the order.')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   async function confirmRefund() {
     if (!refundTarget || !refundReason.trim()) return
     setActionLoading(true)
-
     try {
       await paymentAPI.requestRefund(refundTarget.id, { reason: refundReason.trim() })
-      setStatusMessage('Refund request submitted successfully.')
+      appStore.showSuccess(t('common.success'))
       setRefundTarget(null)
       setRefundReason('')
-      setPage(1)
-    } catch (err) {
-      setStatusMessage((err as Error)?.message || 'Unable to submit the refund request.')
+      await fetchOrders()
+    } catch (err: unknown) {
+      appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
     } finally {
       setActionLoading(false)
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  function canRequestRefund(order: PaymentOrder): boolean {
+    if (order.status !== 'COMPLETED') return false
+    if (!order.provider_instance_id) return false
+    return refundEligibleProviders.has(order.provider_instance_id)
+  }
+
+  const loadRefundEligibility = useCallback(async () => {
+    try {
+      const res = await paymentAPI.getRefundEligibleProviders()
+      setRefundEligibleProviders(new Set(res.data.provider_instance_ids || []))
+    } catch {
+      /* ignore — default to hiding refund button */
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOrders()
+    loadRefundEligibility()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
-    <PageShell title="My Orders" description="Purchase orders and payment history" path="/orders">
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold text-slate-900">My orders</h2>
-              <p className="text-sm text-slate-600">Review your payment history, cancel pending orders, and request refunds where eligible.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push('/purchase')}
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Back to recharge
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-                <select
-                  value={status}
-                  onChange={(event) => {
-                    setStatus(event.target.value as OrderStatus | 'all')
-                    setPage(1)
-                  }}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-200"
-                >
-                  {statusFilters.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex items-end justify-end">
+    <AppLayout>
+      <div className="space-y-4">
+        {/* Filters */}
+        <div className="card p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              modelValue={currentFilter}
+              options={statusFilters}
+              className="w-36"
+              onUpdateModelValue={(value) => {
+                const next = (value ?? '') as string
+                currentFilterRef.current = next
+                setCurrentFilter(next)
+              }}
+              onChange={() => fetchOrders()}
+            />
+            <div className="flex flex-1 items-center justify-end gap-2">
               <button
-                type="button"
-                onClick={() => setPage(1)}
-                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                onClick={() => fetchOrders()}
+                disabled={loading}
+                className="btn btn-secondary"
+                title={t('common.refresh')}
               >
-                Refresh
+                <Icon name="refresh" size="md" className={loading ? 'animate-spin' : ''} />
+              </button>
+              <button className="btn btn-primary" onClick={() => router.push('/purchase')}>
+                {t('payment.result.backToRecharge')}
               </button>
             </div>
           </div>
         </div>
 
-        {statusMessage ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            {statusMessage}
-          </div>
-        ) : null}
-
-        {loading ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-600">Loading orders…</div>
-        ) : error ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
-            <p className="font-semibold">Unable to load orders</p>
-            <p className="mt-2 text-sm">{error}</p>
-          </div>
-        ) : (
-          <>
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm text-slate-600">Showing {orders.length} of {total} orders</p>
+        {/* Table */}
+        <OrderTable
+          orders={orders}
+          loading={loading}
+          renderActions={(row) => (
+            <div className="flex items-center gap-2">
+              {row.status === 'PENDING' ? (
+                <button
+                  onClick={() => handleCancel(row.id)}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20"
+                >
+                  <Icon name="x" size="sm" />
+                  <span>{t('payment.orders.cancel')}</span>
+                </button>
+              ) : null}
+              {canRequestRefund(row) ? (
+                <button
+                  onClick={() => openRefundDialog(row)}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                >
+                  <Icon name="dollar" size="sm" />
+                  <span>{t('payment.orders.requestRefund')}</span>
+                </button>
+              ) : null}
             </div>
+          )}
+        />
 
-            <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Order</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Payment</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Paid</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                  {orders.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
-                        No orders found for the current filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    orders.map((order) => (
-                      <tr key={order.id} className="odd:bg-slate-50">
-                        <td className="px-4 py-4 font-medium text-slate-900">#{order.id}</td>
-                        <td className="px-4 py-4 capitalize">{order.order_type}</td>
-                        <td className="px-4 py-4">{order.payment_type}</td>
-                        <td className="px-4 py-4 capitalize">{order.status.replace('_', ' ')}</td>
-                        <td className="px-4 py-4">{formatMoney(order.amount, order.currency || 'USD')}</td>
-                        <td className="px-4 py-4">{formatDate(order.created_at)}</td>
-                        <td className="px-4 py-4">{formatDate(order.paid_at ?? null)}</td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {order.status === 'PENDING' ? (
-                              <button
-                                type="button"
-                                onClick={() => handleCancel(order.id)}
-                                className="rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
-                              >
-                                Cancel
-                              </button>
-                            ) : null}
-                            {canRequestRefund(order) ? (
-                              <button
-                                type="button"
-                                onClick={() => openRefundDialog(order)}
-                                className="rounded-2xl border border-violet-300 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
-                              >
-                                Request refund
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">Page {page} of {totalPages}</p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handlePageChange(Math.max(1, page - 1))}
-                  disabled={page === 1}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                  disabled={page === totalPages}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {cancelOrderId !== null ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-            <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-              <h2 className="text-lg font-semibold text-slate-900">Cancel order</h2>
-              <p className="mt-4 text-sm text-slate-600">Are you sure you want to cancel order #{cancelOrderId}? This cannot be undone.</p>
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCancelOrderId(null)}
-                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmCancel}
-                  disabled={actionLoading}
-                  className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {actionLoading ? 'Cancelling…' : 'Cancel order'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {refundTarget ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-            <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
-              <h2 className="text-lg font-semibold text-slate-900">Request refund</h2>
-              <p className="mt-2 text-sm text-slate-600">Provide a reason and send a refund request for order #{refundTarget.id}.</p>
-
-              <div className="mt-6 space-y-4 rounded-3xl border border-slate-100 bg-slate-50 p-4">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-slate-500">Order</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">#{refundTarget.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Amount</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(refundTarget.amount, refundTarget.currency || 'USD')}</p>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Refund reason</label>
-                  <textarea
-                    rows={4}
-                    value={refundReason}
-                    onChange={(event) => setRefundReason(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-200"
-                    placeholder="Describe why you are requesting a refund"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRefundTarget(null)}
-                  className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmRefund}
-                  disabled={actionLoading || !refundReason.trim()}
-                  className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {actionLoading ? 'Submitting…' : 'Submit refund request'}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Pagination */}
+        {pagination.total > 0 ? (
+          <Pagination
+            page={pagination.page}
+            total={pagination.total}
+            pageSize={pagination.page_size}
+            onUpdatePage={handlePageChange}
+            onUpdatePageSize={handlePageSizeChange}
+          />
         ) : null}
       </div>
-    </PageShell>
+
+      {/* Cancel Confirm Dialog */}
+      <BaseDialog
+        show={!!cancelTargetId}
+        title={t('payment.orders.cancel')}
+        width="narrow"
+        onClose={() => setCancelTargetId(null)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button className="btn btn-secondary" onClick={() => setCancelTargetId(null)}>
+              {t('common.cancel')}
+            </button>
+            <button className="btn btn-danger" disabled={actionLoading} onClick={confirmCancel}>
+              {actionLoading ? t('common.processing') : t('payment.orders.cancel')}
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-gray-600 dark:text-gray-300">{t('payment.confirmCancel')}</p>
+      </BaseDialog>
+
+      {/* Refund Dialog */}
+      <BaseDialog
+        show={!!refundTarget}
+        title={t('payment.orders.requestRefund')}
+        onClose={() => setRefundTarget(null)}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button className="btn btn-secondary" onClick={() => setRefundTarget(null)}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={actionLoading || !refundReason.trim()}
+              onClick={confirmRefund}
+            >
+              {actionLoading ? t('common.processing') : t('payment.orders.requestRefund')}
+            </button>
+          </div>
+        }
+      >
+        {refundTarget ? (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-dark-800">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">{t('payment.orders.orderId')}</span>
+                <span className="font-mono text-gray-900 dark:text-white">#{refundTarget.id}</span>
+              </div>
+              <div className="mt-2 flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">{t('payment.orders.amount')}</span>
+                <span className="text-gray-900 dark:text-white">${refundTarget.amount.toFixed(2)}</span>
+              </div>
+            </div>
+            <div>
+              <label className="input-label">{t('payment.refundReason')}</label>
+              <textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                rows={3}
+                className="input mt-1 w-full"
+                placeholder={t('payment.refundReasonPlaceholder')}
+              />
+            </div>
+          </div>
+        ) : null}
+      </BaseDialog>
+    </AppLayout>
   )
 }

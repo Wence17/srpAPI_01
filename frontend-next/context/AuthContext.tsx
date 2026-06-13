@@ -1,20 +1,25 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { getAuthToken, getPersistedAuthUser, getTokenExpiresAt, setTokenExpiresAt, setAuthToken, setAuthUser, setRefreshToken, clearAuthStorage, getCurrentUser, login as authLogin, login2FA as authLogin2FA, register as authRegister, logout as authLogout, refreshToken as authRefreshToken } from '@/lib/auth'
-import type { AuthResponse, LoginRequest, LoginResponse, RegisterRequest, TotpLoginResponse } from '@/lib/types'
-import type { User } from '@/lib/types'
+import { getAuthToken, getPersistedAuthUser, getTokenExpiresAt, setTokenExpiresAt, setAuthToken, setAuthUser, setRefreshToken, clearAuthStorage, getCurrentUser, login as authLogin, login2FA as authLogin2FA, register as authRegister, logout as authLogout, refreshToken as authRefreshToken, getPersistedPendingAuthSession, persistPendingAuthSession, clearPendingAuthSessionStorage } from '@/lib/auth'
+import type { AuthResponse, LoginRequest, LoginResponse, RegisterRequest, TotpLoginResponse, PendingAuthSessionSummary, User } from '@/lib/types'
 
 interface AuthContextValue {
   user: User | null
   token: string | null
+  pendingAuthSession: PendingAuthSessionSummary | null
   isAuthenticated: boolean
   isAdmin: boolean
+  isSimpleMode: boolean
   login: (credentials: LoginRequest) => Promise<LoginResponse>
   login2FA: (payload: { temp_token: string; totp_code: string }) => Promise<AuthResponse>
   register: (payload: RegisterRequest) => Promise<AuthResponse>
   logout: () => Promise<void>
+  setToken: (newToken: string) => Promise<User>
+  setPendingAuthSession: (session: PendingAuthSessionSummary | null) => void
+  clearPendingAuthSession: () => void
   refreshUser: () => Promise<void>
+  updateUser: (user: User) => void
   checkAuth: () => void
 }
 
@@ -28,18 +33,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const persisted = getPersistedAuthUser()
     return persisted as User | null
   })
-  const [token, setToken] = useState<string | null>(() => getAuthToken())
+  const [token, setTokenState] = useState<string | null>(() => getAuthToken())
+  const [pendingAuthSession, setPendingAuthSessionState] = useState<PendingAuthSessionSummary | null>(
+    () => getPersistedPendingAuthSession(),
+  )
   const [isReady, setIsReady] = useState(false)
 
   const isAuthenticated = useMemo(() => !!token && !!user, [token, user])
   const isAdmin = useMemo(() => user?.role === 'admin', [user])
+  const isSimpleMode = useMemo(() => user?.run_mode === 'simple', [user])
+
+  const updateUser = useCallback((nextUser: User) => {
+    setUser(nextUser)
+    setAuthUser(nextUser)
+  }, [])
 
   const refreshUser = useCallback(async () => {
     try {
       const response = await getCurrentUser()
-      setUser(response.user)
-      if (response.user && token) {
-        localStorage.setItem('auth_user', JSON.stringify(response.user))
+      setUser(response)
+      if (response && token) {
+        setAuthUser(response)
       }
     } catch (error) {
       console.error('Failed to refresh user:', error)
@@ -60,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(async () => {
       try {
         const refreshData = await authRefreshToken()
-        setToken(refreshData.access_token)
+        setTokenState(refreshData.access_token)
         setAuthToken(refreshData.access_token)
         if (refreshData.refresh_token) {
           setRefreshToken(refreshData.refresh_token)
@@ -79,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (credentials: LoginRequest) => {
     const response = await authLogin(credentials)
     if (!('requires_2fa' in response)) {
-      setToken(response.access_token)
+      setTokenState(response.access_token)
       setAuthToken(response.access_token)
       if (response.refresh_token) {
         setRefreshToken(response.refresh_token)
@@ -94,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login2FA = useCallback(async (payload: { temp_token: string; totp_code: string }) => {
     const response = await authLogin2FA(payload)
-    setToken(response.access_token)
+    setTokenState(response.access_token)
     setAuthToken(response.access_token)
     if (response.refresh_token) {
       setRefreshToken(response.refresh_token)
@@ -108,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(async (payload: RegisterRequest) => {
     const response = await authRegister(payload)
-    setToken(response.access_token)
+    setTokenState(response.access_token)
     setAuthToken(response.access_token)
     if (response.refresh_token) {
       setRefreshToken(response.refresh_token)
@@ -120,21 +134,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return response
   }, [])
 
+  const setToken = useCallback(async (newToken: string) => {
+    setTokenState(newToken)
+    setAuthToken(newToken)
+    const userData = await getCurrentUser()
+    setUser(userData)
+    setAuthUser(userData)
+    clearPendingAuthSessionStorage()
+    setPendingAuthSessionState(null)
+    return userData
+  }, [])
+
+  const setPendingAuthSession = useCallback((session: PendingAuthSessionSummary | null) => {
+    setPendingAuthSessionState(session)
+    if (session) {
+      persistPendingAuthSession(session)
+    } else {
+      clearPendingAuthSessionStorage()
+    }
+  }, [])
+
+  const clearPendingAuthSession = useCallback(() => {
+    setPendingAuthSessionState(null)
+    clearPendingAuthSessionStorage()
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       await authLogout()
     } finally {
       clearAuthStorage()
       setUser(null)
-      setToken(null)
+      setTokenState(null)
     }
   }, [])
 
   const checkAuth = useCallback(() => {
     const authToken = getAuthToken()
     const persistedUser = getPersistedAuthUser() as User | null
-    setToken(authToken)
+    setTokenState(authToken)
     setUser(persistedUser)
+    setPendingAuthSessionState(getPersistedPendingAuthSession())
     setIsReady(true)
   }, [])
 
@@ -165,16 +205,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       token,
+      pendingAuthSession,
       isAuthenticated,
       isAdmin,
+      isSimpleMode,
       login,
       login2FA,
       register,
       logout,
+      setToken,
+      setPendingAuthSession,
+      clearPendingAuthSession,
       refreshUser,
-      checkAuth
+      updateUser,
+      checkAuth,
     }),
-    [user, token, isAuthenticated, isAdmin, login, login2FA, register, logout, refreshUser, checkAuth]
+    [
+      user,
+      token,
+      pendingAuthSession,
+      isAuthenticated,
+      isAdmin,
+      isSimpleMode,
+      login,
+      login2FA,
+      register,
+      logout,
+      setToken,
+      setPendingAuthSession,
+      clearPendingAuthSession,
+      refreshUser,
+      updateUser,
+      checkAuth,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

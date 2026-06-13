@@ -1,0 +1,412 @@
+'use client'
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import QRCode from 'qrcode'
+import { useI18n } from '@/lib/i18n/I18nProvider'
+import { useApp } from '@/context/AppContext'
+import { totpAPI } from '@/lib/totp'
+import type { TotpSetupResponse } from '@/lib/types'
+
+interface TotpSetupModalProps {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export default function TotpSetupModal({ onClose, onSuccess }: TotpSetupModalProps) {
+  const { t } = useI18n()
+  const appStore = useApp()
+
+  const [step, setStep] = useState(0)
+  const [methodLoading, setMethodLoading] = useState(true)
+  const [verificationMethod, setVerificationMethod] = useState<'email' | 'password'>('password')
+  const [verifyForm, setVerifyForm] = useState({ emailCode: '', password: '' })
+  const [sendingCode, setSendingCode] = useState(false)
+  const [codeCooldown, setCodeCooldown] = useState(0)
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [setupLoading, setSetupLoading] = useState(false)
+  const [setupData, setSetupData] = useState<TotpSetupResponse | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [code, setCode] = useState<string[]>(['', '', '', '', '', ''])
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('')
+
+  const stepDescription = useMemo(() => {
+    switch (step) {
+      case 0:
+        return verificationMethod === 'email'
+          ? t('profile.totp.verifyEmailFirst')
+          : t('profile.totp.verifyPasswordFirst')
+      case 1:
+        return t('profile.totp.setupStep1')
+      case 2:
+        return t('profile.totp.setupStep2')
+      default:
+        return ''
+    }
+  }, [step, verificationMethod, t])
+
+  const canProceedFromVerify = useMemo(() => {
+    if (verificationMethod === 'email') {
+      return verifyForm.emailCode.length === 6
+    }
+    return verifyForm.password.length > 0
+  }, [verificationMethod, verifyForm])
+
+  useEffect(() => {
+    const loadVerificationMethod = async () => {
+      setMethodLoading(true)
+      try {
+        const method = await totpAPI.getVerificationMethod()
+        setVerificationMethod(method.method)
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } }
+        appStore.showError(error.response?.data?.message || t('common.error'))
+        onClose()
+      } finally {
+        setMethodLoading(false)
+      }
+    }
+    void loadVerificationMethod()
+  }, [appStore, onClose, t])
+
+  useEffect(() => {
+    const url = setupData?.qr_code_url
+    if (!url) {
+      setQrCodeDataUrl('')
+      return
+    }
+    void QRCode.toDataURL(url, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+    })
+      .then(setQrCodeDataUrl)
+      .catch((err) => console.error('Failed to generate QR code:', err))
+  }, [setupData?.qr_code_url])
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current)
+        cooldownTimerRef.current = null
+      }
+    }
+  }, [])
+
+  const handleSendCode = async () => {
+    setSendingCode(true)
+    try {
+      await totpAPI.sendVerifyCode()
+      appStore.showSuccess(t('profile.totp.codeSent'))
+      setCodeCooldown(60)
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current)
+        cooldownTimerRef.current = null
+      }
+      cooldownTimerRef.current = setInterval(() => {
+        setCodeCooldown((prev) => {
+          if (prev <= 1) {
+            if (cooldownTimerRef.current) {
+              clearInterval(cooldownTimerRef.current)
+              cooldownTimerRef.current = null
+            }
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } }
+      appStore.showError(error.response?.data?.message || t('profile.totp.sendCodeFailed'))
+    } finally {
+      setSendingCode(false)
+    }
+  }
+
+  const handleVerifyAndSetup = async () => {
+    setSetupLoading(true)
+    try {
+      const request =
+        verificationMethod === 'email'
+          ? { email_code: verifyForm.emailCode }
+          : { password: verifyForm.password }
+      const data = await totpAPI.initiateSetup(request)
+      setSetupData(data)
+      setStep(1)
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } }
+      appStore.showError(error.response?.data?.message || t('profile.totp.setupFailed'))
+    } finally {
+      setSetupLoading(false)
+    }
+  }
+
+  const handleCodeInput = (event: React.FormEvent<HTMLInputElement>, index: number) => {
+    const input = event.currentTarget
+    const value = input.value.replace(/[^0-9]/g, '')
+    setCode((prev) => {
+      const next = [...prev]
+      next[index] = value
+      return next
+    })
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleKeydown = (event: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (event.key === 'Backspace') {
+      const input = event.currentTarget
+      if (!input.value && index > 0) {
+        event.preventDefault()
+        inputRefs.current[index - 1]?.focus()
+      }
+    }
+  }
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    const pastedData = event.clipboardData.getData('text') || ''
+    const digits = pastedData.replace(/[^0-9]/g, '').slice(0, 6).split('')
+    setCode((prev) => {
+      const next = [...prev]
+      digits.forEach((digit, index) => {
+        next[index] = digit
+        if (inputRefs.current[index]) {
+          inputRefs.current[index]!.value = digit
+        }
+      })
+      for (let i = digits.length; i < 6; i++) {
+        next[i] = ''
+        if (inputRefs.current[i]) {
+          inputRefs.current[i]!.value = ''
+        }
+      }
+      return next
+    })
+    const focusIndex = Math.min(digits.length, 5)
+    inputRefs.current[focusIndex]?.focus()
+  }
+
+  const copySecret = async () => {
+    if (!setupData) return
+    try {
+      await navigator.clipboard.writeText(setupData.secret)
+      appStore.showSuccess(t('common.copied'))
+    } catch {
+      appStore.showError(t('common.copyFailed'))
+    }
+  }
+
+  const handleVerify = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const totpCode = code.join('')
+    if (totpCode.length !== 6 || !setupData) return
+
+    setVerifying(true)
+    try {
+      await totpAPI.enable({
+        totp_code: totpCode,
+        setup_token: setupData.setup_token,
+      })
+      appStore.showSuccess(t('profile.totp.enableSuccess'))
+      onSuccess()
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } }
+      appStore.showError(error.response?.data?.message || t('profile.totp.verifyFailed'))
+      setCode(['', '', '', '', '', ''])
+      inputRefs.current.forEach((input) => {
+        if (input) input.value = ''
+      })
+      inputRefs.current[0]?.focus()
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto" onClick={onClose}>
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+
+        <div
+          className="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-dark-800"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mb-6 text-center">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{t('profile.totp.setupTitle')}</h3>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{stepDescription}</p>
+          </div>
+
+          {step === 0 && (
+            <div className="space-y-6">
+              {methodLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-500" />
+                </div>
+              ) : (
+                <>
+                  {verificationMethod === 'email' ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="input-label">{t('profile.totp.emailCode')}</label>
+                        <div className="flex gap-2">
+                          <input
+                            value={verifyForm.emailCode}
+                            onChange={(event) =>
+                              setVerifyForm((prev) => ({ ...prev, emailCode: event.target.value }))
+                            }
+                            type="text"
+                            maxLength={6}
+                            inputMode="numeric"
+                            className="input flex-1"
+                            placeholder={t('profile.totp.enterEmailCode')}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-secondary whitespace-nowrap"
+                            disabled={sendingCode || codeCooldown > 0}
+                            onClick={handleSendCode}
+                          >
+                            {codeCooldown > 0
+                              ? `${codeCooldown}s`
+                              : sendingCode
+                                ? t('common.sending')
+                                : t('profile.totp.sendCode')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="input-label">{t('profile.currentPassword')}</label>
+                        <input
+                          value={verifyForm.password}
+                          onChange={(event) =>
+                            setVerifyForm((prev) => ({ ...prev, password: event.target.value }))
+                          }
+                          type="password"
+                          autoComplete="current-password"
+                          className="input"
+                          placeholder={t('profile.totp.enterPassword')}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button type="button" className="btn btn-secondary" onClick={onClose}>
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={!canProceedFromVerify || setupLoading}
+                      onClick={handleVerifyAndSetup}
+                    >
+                      {setupLoading ? t('common.loading') : t('common.next')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-6">
+              {setupData && (
+                <>
+                  <div className="flex justify-center">
+                    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-white">
+                      <img src={qrCodeDataUrl} alt="QR Code" className="h-48 w-48" />
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">{t('profile.totp.manualEntry')}</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <code className="rounded bg-gray-100 px-3 py-2 font-mono text-sm dark:bg-dark-700">
+                        {setupData.secret}
+                      </code>
+                      <button
+                        type="button"
+                        className="rounded p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-700"
+                        onClick={copySecret}
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  {t('common.cancel')}
+                </button>
+                <button type="button" className="btn btn-primary" disabled={!setupData} onClick={() => setStep(2)}>
+                  {t('common.next')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              <form onSubmit={handleVerify}>
+                <div className="mb-6">
+                  <label className="input-label mb-3 block text-center">{t('profile.totp.enterCode')}</label>
+                  <div className="flex justify-center gap-2">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => {
+                          inputRefs.current[index] = el
+                        }}
+                        type="text"
+                        maxLength={1}
+                        inputMode="numeric"
+                        pattern="[0-9]"
+                        className="h-12 w-10 rounded-lg border border-gray-300 text-center text-lg font-semibold focus:border-primary-500 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-700"
+                        onInput={(event) => handleCodeInput(event, index)}
+                        onKeyDown={(event) => handleKeydown(event, index)}
+                        onPaste={handlePaste}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>
+                    {t('common.back')}
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={verifying || code.join('').length !== 6}
+                  >
+                    {verifying ? t('common.verifying') : t('profile.totp.verify')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

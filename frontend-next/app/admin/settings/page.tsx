@@ -98,11 +98,11 @@ export default function SystemSettingsPage() {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm font-medium text-slate-700">Feature flags</p>
                 <div className="mt-4 space-y-3">
-                  {[
+                  {([
                     ['payment_enabled', 'Payment'],
                     ['risk_control_enabled', 'Risk control'],
                     ['available_channels_enabled', 'Available channels'],
-                    ['affiliates_enabled', 'Affiliate program'],
+                    ['affiliate_enabled', 'Affiliate program'],
                     ['channel_monitor_enabled', 'Channel monitor'],
                   ] as const).map(([key, label]) => (
                     <button

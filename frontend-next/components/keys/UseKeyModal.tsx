@@ -1,0 +1,678 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useI18n } from '@/lib/i18n'
+import BaseDialog from '@/components/common/BaseDialog'
+import Icon from '@/components/icons/Icon'
+import { useClipboard } from '@/lib/useClipboard'
+import type { GroupPlatform } from '@/lib/types'
+
+interface UseKeyModalProps {
+  show: boolean
+  apiKey: string
+  baseUrl: string
+  platform: GroupPlatform | null
+  allowMessagesDispatch?: boolean
+  onClose: () => void
+}
+
+interface TabConfig {
+  id: string
+  label: string
+  icon: ReactNode
+}
+
+interface FileConfig {
+  path: string
+  content: string
+  hint?: string
+  highlighted?: string
+}
+
+function AppleIcon() {
+  return (
+    <svg fill="currentColor" viewBox="0 0 24 24" className="h-4 w-4">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+    </svg>
+  )
+}
+
+function WindowsIcon() {
+  return (
+    <svg fill="currentColor" viewBox="0 0 24 24" className="h-4 w-4">
+      <path d="M3 12V6.75l6-1.32v6.48L3 12zm17-9v8.75l-10 .15V5.21L20 3zM3 13l6 .09v6.81l-6-1.15V13zm7 .25l10 .15V21l-10-1.91v-5.84z" />
+    </svg>
+  )
+}
+
+function TerminalIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" className="h-4 w-4">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 17.25V6.75A2.25 2.25 0 0 0 18.75 4.5H5.25A2.25 2.25 0 0 0 3 6.75v10.5A2.25 2.25 0 0 0 5.25 20.25Z"
+      />
+    </svg>
+  )
+}
+
+function SparkleIcon() {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" className="h-4 w-4">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
+      />
+    </svg>
+  )
+}
+
+const shellTabs: TabConfig[] = [
+  { id: 'unix', label: 'macOS / Linux', icon: <AppleIcon /> },
+  { id: 'cmd', label: 'Windows CMD', icon: <WindowsIcon /> },
+  { id: 'powershell', label: 'PowerShell', icon: <WindowsIcon /> },
+]
+
+const openaiTabs: TabConfig[] = [
+  { id: 'unix', label: 'macOS / Linux', icon: <AppleIcon /> },
+  { id: 'windows', label: 'Windows', icon: <WindowsIcon /> },
+]
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function wrapToken(className: string, value: string) {
+  return `<span class="${className}">${escapeHtml(value)}</span>`
+}
+
+function keyword(value: string) {
+  return wrapToken('text-emerald-300', value)
+}
+function variable(value: string) {
+  return wrapToken('text-sky-200', value)
+}
+function operator(value: string) {
+  return wrapToken('text-slate-400', value)
+}
+function stringLit(value: string) {
+  return wrapToken('text-amber-200', value)
+}
+function comment(value: string) {
+  return wrapToken('text-slate-500', value)
+}
+
+function generateAnthropicFiles(baseUrl: string, apiKey: string, activeTab: string): FileConfig[] {
+  let path: string
+  let content: string
+
+  switch (activeTab) {
+    case 'unix':
+      path = 'Terminal'
+      content = `export ANTHROPIC_BASE_URL="${baseUrl}"
+export ANTHROPIC_AUTH_TOKEN="${apiKey}"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+      break
+    case 'cmd':
+      path = 'Command Prompt'
+      content = `set ANTHROPIC_BASE_URL=${baseUrl}
+set ANTHROPIC_AUTH_TOKEN=${apiKey}
+set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+      break
+    case 'powershell':
+      path = 'PowerShell'
+      content = `$env:ANTHROPIC_BASE_URL="${baseUrl}"
+$env:ANTHROPIC_AUTH_TOKEN="${apiKey}"
+$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+      break
+    default:
+      path = 'Terminal'
+      content = ''
+  }
+
+  const vscodeSettingsPath =
+    activeTab === 'unix' ? '~/.claude/settings.json' : '%userprofile%\\.claude\\settings.json'
+
+  const vscodeContent = `{
+  "env": {
+    "ANTHROPIC_BASE_URL": "${baseUrl}",
+    "ANTHROPIC_AUTH_TOKEN": "${apiKey}",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
+  }
+}`
+
+  return [
+    { path, content },
+    { path: vscodeSettingsPath, content: vscodeContent, hint: 'VSCode Claude Code' },
+  ]
+}
+
+function generateGeminiCliContent(
+  baseUrl: string,
+  apiKey: string,
+  activeTab: string,
+  modelComment: string,
+): FileConfig {
+  const model = 'gemini-2.0-flash'
+  let path: string
+  let content: string
+  let highlighted: string
+
+  switch (activeTab) {
+    case 'unix':
+      path = 'Terminal'
+      content = `export GOOGLE_GEMINI_BASE_URL="${baseUrl}"
+export GEMINI_API_KEY="${apiKey}"
+export GEMINI_MODEL="${model}"  # ${modelComment}`
+      highlighted = `${keyword('export')} ${variable('GOOGLE_GEMINI_BASE_URL')}${operator('=')}${stringLit(`"${baseUrl}"`)}
+${keyword('export')} ${variable('GEMINI_API_KEY')}${operator('=')}${stringLit(`"${apiKey}"`)}
+${keyword('export')} ${variable('GEMINI_MODEL')}${operator('=')}${stringLit(`"${model}"`)}  ${comment(`# ${modelComment}`)}`
+      break
+    case 'cmd':
+      path = 'Command Prompt'
+      content = `set GOOGLE_GEMINI_BASE_URL=${baseUrl}
+set GEMINI_API_KEY=${apiKey}
+set GEMINI_MODEL=${model}`
+      highlighted = `${keyword('set')} ${variable('GOOGLE_GEMINI_BASE_URL')}${operator('=')}${stringLit(baseUrl)}
+${keyword('set')} ${variable('GEMINI_API_KEY')}${operator('=')}${stringLit(apiKey)}
+${keyword('set')} ${variable('GEMINI_MODEL')}${operator('=')}${stringLit(model)}
+${comment(`REM ${modelComment}`)}`
+      break
+    case 'powershell':
+      path = 'PowerShell'
+      content = `$env:GOOGLE_GEMINI_BASE_URL="${baseUrl}"
+$env:GEMINI_API_KEY="${apiKey}"
+$env:GEMINI_MODEL="${model}"  # ${modelComment}`
+      highlighted = `${keyword('$env:')}${variable('GOOGLE_GEMINI_BASE_URL')}${operator('=')}${stringLit(`"${baseUrl}"`)}
+${keyword('$env:')}${variable('GEMINI_API_KEY')}${operator('=')}${stringLit(`"${apiKey}"`)}
+${keyword('$env:')}${variable('GEMINI_MODEL')}${operator('=')}${stringLit(`"${model}"`)}  ${comment(`# ${modelComment}`)}`
+      break
+    default:
+      path = 'Terminal'
+      content = ''
+      highlighted = ''
+  }
+
+  return { path, content, highlighted }
+}
+
+function generateOpenAIFiles(baseUrl: string, apiKey: string, activeTab: string, configTomlHint: string): FileConfig[] {
+  const isWindows = activeTab === 'windows'
+  const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
+
+  const configContent = `model_provider = "OpenAI"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+network_access = "enabled"
+windows_wsl_setup_acknowledged = true
+
+[model_providers.OpenAI]
+name = "OpenAI"
+base_url = "${baseUrl}"
+wire_api = "responses"
+requires_openai_auth = true
+
+[features]
+goals = true`
+
+  const authContent = `{
+  "OPENAI_API_KEY": "${apiKey}"
+}`
+
+  return [
+    { path: `${configDir}/config.toml`, content: configContent, hint: configTomlHint },
+    { path: `${configDir}/auth.json`, content: authContent },
+  ]
+}
+
+function generateOpenAIWsFiles(baseUrl: string, apiKey: string, activeTab: string, configTomlHint: string): FileConfig[] {
+  const isWindows = activeTab === 'windows'
+  const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
+
+  const configContent = `model_provider = "OpenAI"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+network_access = "enabled"
+windows_wsl_setup_acknowledged = true
+
+[model_providers.OpenAI]
+name = "OpenAI"
+base_url = "${baseUrl}"
+wire_api = "responses"
+supports_websockets = true
+requires_openai_auth = true
+
+[features]
+responses_websockets_v2 = true
+goals = true`
+
+  const authContent = `{
+  "OPENAI_API_KEY": "${apiKey}"
+}`
+
+  return [
+    { path: `${configDir}/config.toml`, content: configContent, hint: configTomlHint },
+    { path: `${configDir}/auth.json`, content: authContent },
+  ]
+}
+
+function generateOpenCodeConfig(
+  platform: string,
+  baseUrl: string,
+  apiKey: string,
+  opencodeHint: string,
+  pathLabel?: string,
+): FileConfig {
+  const provider: Record<string, Record<string, unknown>> = {
+    [platform]: {
+      options: {
+        baseURL: baseUrl,
+        apiKey,
+      },
+    },
+  }
+
+  const openaiModels = {
+    'gpt-5.2': { name: 'GPT-5.2', limit: { context: 400000, output: 128000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {}, xhigh: {} } },
+    'gpt-5.5': { name: 'GPT-5.5', limit: { context: 1050000, output: 128000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {}, xhigh: {} } },
+    'gpt-5.4': { name: 'GPT-5.4', limit: { context: 1050000, output: 128000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {}, xhigh: {} } },
+    'gpt-5.4-mini': { name: 'GPT-5.4 Mini', limit: { context: 400000, output: 128000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {}, xhigh: {} } },
+    'gpt-5.3-codex-spark': { name: 'GPT-5.3 Codex Spark', limit: { context: 128000, output: 32000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {}, xhigh: {} } },
+    'gpt-5.3-codex': { name: 'GPT-5.3 Codex', limit: { context: 400000, output: 128000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {}, xhigh: {} } },
+    'codex-mini-latest': { name: 'Codex Mini', limit: { context: 200000, output: 100000 }, options: { store: false }, variants: { low: {}, medium: {}, high: {} } },
+  }
+
+  const geminiModels = {
+    'gemini-2.0-flash': { name: 'Gemini 2.0 Flash', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] } },
+    'gemini-2.5-flash': { name: 'Gemini 2.5 Flash', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] } },
+    'gemini-2.5-pro': { name: 'Gemini 2.5 Pro', limit: { context: 2097152, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-3.5-flash': { name: 'Gemini 3.5 Flash', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] } },
+    'gemini-3-flash-preview': { name: 'Gemini 3 Flash Preview', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] } },
+    'gemini-3-pro-preview': { name: 'Gemini 3 Pro Preview', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-3.1-pro-preview': { name: 'Gemini 3.1 Pro Preview', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+  }
+
+  const antigravityGeminiModels = {
+    'gemini-2.5-flash': { name: 'Gemini 2.5 Flash', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'disable' } } },
+    'gemini-2.5-flash-lite': { name: 'Gemini 2.5 Flash Lite', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-2.5-flash-thinking': { name: 'Gemini 2.5 Flash (Thinking)', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-3-flash': { name: 'Gemini 3 Flash', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-3.1-pro-low': { name: 'Gemini 3.1 Pro Low', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-3.1-pro-high': { name: 'Gemini 3.1 Pro High', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-2.5-flash-image': { name: 'Gemini 2.5 Flash Image', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image'], output: ['image'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'gemini-3.1-flash-image': { name: 'Gemini 3.1 Flash Image', limit: { context: 1048576, output: 65536 }, modalities: { input: ['text', 'image'], output: ['image'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+  }
+
+  const claudeModels = {
+    'claude-opus-4-6-thinking': { name: 'Claude 4.6 Opus (Thinking)', limit: { context: 200000, output: 128000 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+    'claude-sonnet-4-6': { name: 'Claude 4.6 Sonnet', limit: { context: 200000, output: 64000 }, modalities: { input: ['text', 'image', 'pdf'], output: ['text'] }, options: { thinking: { budgetTokens: 24576, type: 'enabled' } } },
+  }
+
+  if (platform === 'gemini') {
+    provider[platform].npm = '@ai-sdk/google'
+    provider[platform].models = geminiModels
+  } else if (platform === 'anthropic') {
+    provider[platform].npm = '@ai-sdk/anthropic'
+  } else if (platform === 'antigravity-claude') {
+    provider[platform].npm = '@ai-sdk/anthropic'
+    provider[platform].name = 'Antigravity (Claude)'
+    provider[platform].models = claudeModels
+  } else if (platform === 'antigravity-gemini') {
+    provider[platform].npm = '@ai-sdk/google'
+    provider[platform].name = 'Antigravity (Gemini)'
+    provider[platform].models = antigravityGeminiModels
+  } else if (platform === 'openai') {
+    provider[platform].models = openaiModels
+  }
+
+  const agent =
+    platform === 'openai'
+      ? { build: { options: { store: false } }, plan: { options: { store: false } } }
+      : undefined
+
+  const content = JSON.stringify(
+    { provider, ...(agent ? { agent } : {}), $schema: 'https://opencode.ai/config.json' },
+    null,
+    2,
+  )
+
+  return { path: pathLabel ?? 'opencode.json', content, hint: opencodeHint }
+}
+
+function getDefaultClientTab(platform: GroupPlatform | null): string {
+  switch (platform) {
+    case 'openai':
+      return 'codex'
+    case 'gemini':
+      return 'gemini'
+    case 'antigravity':
+      return 'claude'
+    default:
+      return 'claude'
+  }
+}
+
+function buildCurrentFiles(
+  platform: GroupPlatform | null,
+  activeClientTab: string,
+  activeTab: string,
+  baseUrl: string,
+  apiKey: string,
+  t: (key: string) => string,
+): FileConfig[] {
+  const resolvedBase = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '')
+  const baseRoot = resolvedBase.replace(/\/v1\/?$/, '').replace(/\/+$/, '')
+  const ensureV1 = (value: string) => {
+    const trimmed = value.replace(/\/+$/, '')
+    return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`
+  }
+  const apiBase = ensureV1(baseRoot)
+  const antigravityBase = ensureV1(`${baseRoot}/antigravity`)
+  const antigravityGeminiBase = (() => {
+    const trimmed = `${baseRoot}/antigravity`.replace(/\/+$/, '')
+    return trimmed.endsWith('/v1beta') ? trimmed : `${trimmed}/v1beta`
+  })()
+  const geminiBase = (() => {
+    const trimmed = baseRoot.replace(/\/+$/, '')
+    return trimmed.endsWith('/v1beta') ? trimmed : `${trimmed}/v1beta`
+  })()
+
+  const opencodeHint = t('keys.useKeyModal.opencode.hint')
+  const configTomlHint = t('keys.useKeyModal.openai.configTomlHint')
+  const modelComment = t('keys.useKeyModal.gemini.modelComment')
+
+  if (activeClientTab === 'opencode') {
+    switch (platform) {
+      case 'anthropic':
+        return [generateOpenCodeConfig('anthropic', apiBase, apiKey, opencodeHint)]
+      case 'openai':
+        return [generateOpenCodeConfig('openai', apiBase, apiKey, opencodeHint)]
+      case 'gemini':
+        return [generateOpenCodeConfig('gemini', geminiBase, apiKey, opencodeHint)]
+      case 'antigravity':
+        return [
+          generateOpenCodeConfig('antigravity-claude', antigravityBase, apiKey, opencodeHint, 'opencode.json (Claude)'),
+          generateOpenCodeConfig('antigravity-gemini', antigravityGeminiBase, apiKey, opencodeHint, 'opencode.json (Gemini)'),
+        ]
+      default:
+        return [generateOpenCodeConfig('openai', apiBase, apiKey, opencodeHint)]
+    }
+  }
+
+  switch (platform) {
+    case 'openai':
+      if (activeClientTab === 'claude') return generateAnthropicFiles(resolvedBase, apiKey, activeTab)
+      if (activeClientTab === 'codex-ws') return generateOpenAIWsFiles(resolvedBase, apiKey, activeTab, configTomlHint)
+      return generateOpenAIFiles(resolvedBase, apiKey, activeTab, configTomlHint)
+    case 'gemini':
+      return [generateGeminiCliContent(resolvedBase, apiKey, activeTab, modelComment)]
+    case 'antigravity':
+      if (activeClientTab === 'gemini') {
+        return [generateGeminiCliContent(`${resolvedBase}/antigravity`, apiKey, activeTab, modelComment)]
+      }
+      return generateAnthropicFiles(`${resolvedBase}/antigravity`, apiKey, activeTab)
+    default:
+      return generateAnthropicFiles(resolvedBase, apiKey, activeTab)
+  }
+}
+
+export default function UseKeyModal({
+  show,
+  apiKey,
+  baseUrl,
+  platform,
+  allowMessagesDispatch = false,
+  onClose,
+}: UseKeyModalProps) {
+  const { t } = useI18n()
+  const { copyToClipboard } = useClipboard()
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState('unix')
+  const [activeClientTab, setActiveClientTab] = useState(() => getDefaultClientTab(platform))
+
+  useEffect(() => {
+    setActiveTab('unix')
+    setActiveClientTab(getDefaultClientTab(platform))
+  }, [platform])
+
+  useEffect(() => {
+    setActiveTab('unix')
+  }, [activeClientTab])
+
+  const clientTabs = useMemo((): TabConfig[] => {
+    if (!platform) return []
+    switch (platform) {
+      case 'openai': {
+        const tabs: TabConfig[] = [
+          { id: 'codex', label: t('keys.useKeyModal.cliTabs.codexCli'), icon: <TerminalIcon /> },
+          { id: 'codex-ws', label: t('keys.useKeyModal.cliTabs.codexCliWs'), icon: <TerminalIcon /> },
+        ]
+        if (allowMessagesDispatch) {
+          tabs.push({ id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: <TerminalIcon /> })
+        }
+        tabs.push({ id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: <TerminalIcon /> })
+        return tabs
+      }
+      case 'gemini':
+        return [
+          { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: <SparkleIcon /> },
+          { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: <TerminalIcon /> },
+        ]
+      case 'antigravity':
+        return [
+          { id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: <TerminalIcon /> },
+          { id: 'gemini', label: t('keys.useKeyModal.cliTabs.geminiCli'), icon: <SparkleIcon /> },
+          { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: <TerminalIcon /> },
+        ]
+      default:
+        return [
+          { id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: <TerminalIcon /> },
+          { id: 'opencode', label: t('keys.useKeyModal.cliTabs.opencode'), icon: <TerminalIcon /> },
+        ]
+    }
+  }, [allowMessagesDispatch, platform, t])
+
+  const showShellTabs = activeClientTab !== 'opencode'
+
+  const currentTabs = useMemo(() => {
+    if (!showShellTabs) return []
+    if (activeClientTab === 'codex' || activeClientTab === 'codex-ws') return openaiTabs
+    return shellTabs
+  }, [activeClientTab, showShellTabs])
+
+  const platformDescription = useMemo(() => {
+    switch (platform) {
+      case 'openai':
+        if (activeClientTab === 'claude') return t('keys.useKeyModal.description')
+        return t('keys.useKeyModal.openai.description')
+      case 'gemini':
+        return t('keys.useKeyModal.gemini.description')
+      case 'antigravity':
+        return t('keys.useKeyModal.antigravity.description')
+      default:
+        return t('keys.useKeyModal.description')
+    }
+  }, [activeClientTab, platform, t])
+
+  const platformNote = useMemo(() => {
+    switch (platform) {
+      case 'openai':
+        if (activeClientTab === 'claude') return t('keys.useKeyModal.note')
+        return activeTab === 'windows'
+          ? t('keys.useKeyModal.openai.noteWindows')
+          : t('keys.useKeyModal.openai.note')
+      case 'gemini':
+        return t('keys.useKeyModal.gemini.note')
+      case 'antigravity':
+        return activeClientTab === 'claude'
+          ? t('keys.useKeyModal.antigravity.claudeNote')
+          : t('keys.useKeyModal.antigravity.geminiNote')
+      default:
+        return t('keys.useKeyModal.note')
+    }
+  }, [activeClientTab, activeTab, platform, t])
+
+  const showPlatformNote = activeClientTab !== 'opencode'
+
+  const currentFiles = useMemo(
+    () => buildCurrentFiles(platform, activeClientTab, activeTab, baseUrl, apiKey, t),
+    [activeClientTab, activeTab, apiKey, baseUrl, platform, t],
+  )
+
+  const copyContent = useCallback(
+    async (content: string, index: number) => {
+      const success = await copyToClipboard(content, t('keys.copied'))
+      if (success) {
+        setCopiedIndex(index)
+        setTimeout(() => setCopiedIndex(null), 2000)
+      }
+    },
+    [copyToClipboard, t],
+  )
+
+  return (
+    <BaseDialog
+      show={show}
+      title={t('keys.useKeyModal.title')}
+      width="wide"
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end">
+          <button type="button" onClick={onClose} className="btn btn-secondary">
+            {t('common.close')}
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {!platform ? (
+          <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+            <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{t('keys.useKeyModal.noGroupTitle')}</p>
+              <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">{t('keys.useKeyModal.noGroupDescription')}</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{platformDescription}</p>
+
+            {clientTabs.length > 0 ? (
+              <div className="border-b border-gray-200 dark:border-dark-700">
+                <nav className="-mb-px flex space-x-6" aria-label="Client">
+                  {clientTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveClientTab(tab.id)}
+                      className={`whitespace-nowrap border-b-2 px-1 py-2.5 text-sm font-medium transition-colors ${
+                        activeClientTab === tab.id
+                          ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {tab.icon}
+                        {tab.label}
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            ) : null}
+
+            {showShellTabs && currentTabs.length > 0 ? (
+              <div className="border-b border-gray-200 dark:border-dark-700">
+                <nav className="-mb-px flex space-x-4" aria-label="Tabs">
+                  {currentTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`whitespace-nowrap border-b-2 px-1 py-2.5 text-sm font-medium transition-colors ${
+                        activeTab === tab.id
+                          ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {tab.icon}
+                        {tab.label}
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            ) : null}
+
+            <div className="space-y-4">
+              {currentFiles.map((file, index) => (
+                <div key={`${file.path}-${index}`} className="relative">
+                  {file.hint ? (
+                    <p className="mb-1.5 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                      <Icon name="exclamationCircle" size="sm" className="flex-shrink-0" />
+                      {file.hint}
+                    </p>
+                  ) : null}
+                  <div className="overflow-hidden rounded-xl bg-gray-900 dark:bg-dark-900">
+                    <div className="flex items-center justify-between border-b border-gray-700 bg-gray-800 px-4 py-2 dark:border-dark-700 dark:bg-dark-800">
+                      <span className="font-mono text-xs text-gray-400">{file.path}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyContent(file.content, index)}
+                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                          copiedIndex === index
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                        }`}
+                      >
+                        {copiedIndex === index ? (
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                          </svg>
+                        )}
+                        {copiedIndex === index ? t('keys.useKeyModal.copied') : t('keys.useKeyModal.copy')}
+                      </button>
+                    </div>
+                    <pre className="overflow-x-auto p-4 font-mono text-sm text-gray-100">
+                      {file.highlighted ? (
+                        <code dangerouslySetInnerHTML={{ __html: file.highlighted }} />
+                      ) : (
+                        <code>{file.content}</code>
+                      )}
+                    </pre>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {showPlatformNote ? (
+              <div className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                <Icon name="infoCircle" size="md" className="mt-0.5 flex-shrink-0 text-blue-500" />
+                <p className="text-sm text-blue-700 dark:text-blue-300">{platformNote}</p>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    </BaseDialog>
+  )
+}

@@ -28,14 +28,17 @@ export default function SubscriptionPlansPage() {
         ])
 
         setPlans(
-          planResponse.map((plan) => ({
-            ...plan,
-            features: Array.isArray(plan.features)
-              ? plan.features
-              : typeof plan.features === 'string'
-              ? plan.features.split('\n').map((feature) => feature.trim()).filter(Boolean)
-              : [],
-          }))
+          planResponse.map((plan) => {
+            const rawFeatures = plan.features as unknown as string | string[] | null | undefined
+            return {
+              ...plan,
+              features: Array.isArray(rawFeatures)
+                ? rawFeatures
+                : typeof rawFeatures === 'string'
+                ? rawFeatures.split('\n').map((feature) => feature.trim()).filter(Boolean)
+                : [],
+            }
+          })
         )
         setGroups(groupResponse.items)
       } catch (err) {

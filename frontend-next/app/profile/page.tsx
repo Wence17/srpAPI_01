@@ -1,62 +1,104 @@
 'use client'
 
-import { useMemo } from 'react'
-import PageShell from '@/components/PageShell'
+import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n/I18nProvider'
 import { useAuth } from '@/context/AuthContext'
-import { useApp } from '@/context/AppContext'
+import { getPublicSettings, isWeChatWebOAuthEnabled } from '@/lib/auth'
+import AppLayout from '@/components/layout/AppLayout'
+import Icon from '@/components/icons/Icon'
+import ProfileInfoCard from '@/components/user/profile/ProfileInfoCard'
+import ProfilePasswordForm from '@/components/user/profile/ProfilePasswordForm'
+import ProfileBalanceNotifyCard from '@/components/user/profile/ProfileBalanceNotifyCard'
+import ProfileTotpCard from '@/components/user/profile/ProfileTotpCard'
 
 export default function ProfilePage() {
-  const auth = useAuth()
-  const app = useApp()
+  const { t } = useI18n()
+  const { user, refreshUser } = useAuth()
+  const [contactInfo, setContactInfo] = useState('')
+  const [balanceLowNotifyEnabled, setBalanceLowNotifyEnabled] = useState(false)
+  const [systemDefaultThreshold, setSystemDefaultThreshold] = useState(0)
+  const [linuxdoOAuthEnabled, setLinuxdoOAuthEnabled] = useState(false)
+  const [dingtalkOAuthEnabled, setDingtalkOAuthEnabled] = useState(false)
+  const [wechatOAuthEnabled, setWechatOAuthEnabled] = useState(false)
+  const [wechatOAuthOpenEnabled, setWechatOAuthOpenEnabled] = useState<boolean | undefined>(undefined)
+  const [wechatOAuthMPEnabled, setWechatOAuthMPEnabled] = useState<boolean | undefined>(undefined)
+  const [oidcOAuthEnabled, setOidcOAuthEnabled] = useState(false)
+  const [oidcOAuthProviderName, setOidcOAuthProviderName] = useState('OIDC')
 
-  const role = useMemo(() => auth.user?.role || 'user', [auth.user])
+  useEffect(() => {
+    const profileRefresh = refreshUser().catch((error) => {
+      console.error('Failed to refresh profile:', error)
+    })
+
+    const settingsLoad = getPublicSettings()
+      .then((settings) => {
+        if (!settings) {
+          return
+        }
+        setContactInfo(settings.contact_info || '')
+        setBalanceLowNotifyEnabled(settings.balance_low_notify_enabled ?? false)
+        setSystemDefaultThreshold(settings.balance_low_notify_threshold ?? 0)
+        setLinuxdoOAuthEnabled(settings.linuxdo_oauth_enabled ?? false)
+        setDingtalkOAuthEnabled(settings.dingtalk_oauth_enabled ?? false)
+        setWechatOAuthEnabled(isWeChatWebOAuthEnabled(settings))
+        setWechatOAuthOpenEnabled(
+          typeof settings.wechat_oauth_open_enabled === 'boolean' ? settings.wechat_oauth_open_enabled : undefined,
+        )
+        setWechatOAuthMPEnabled(
+          typeof settings.wechat_oauth_mp_enabled === 'boolean' ? settings.wechat_oauth_mp_enabled : undefined,
+        )
+        setOidcOAuthEnabled(settings.oidc_oauth_enabled ?? false)
+        setOidcOAuthProviderName(settings.oidc_oauth_provider_name || 'OIDC')
+      })
+      .catch((error) => {
+        console.error('Failed to load settings:', error)
+      })
+
+    void Promise.all([profileRefresh, settingsLoad])
+  }, [refreshUser])
 
   return (
-    <PageShell title="Profile" description="View your current Sub2API account details." path="/profile">
-      <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Account</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">Profile details</h2>
-            </div>
-            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
-              <p className="text-sm text-slate-600">Email</p>
-              <p className="mt-2 text-base font-medium text-slate-900">{auth.user?.email || 'Not available'}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
-              <p className="text-sm text-slate-600">Username</p>
-              <p className="mt-2 text-base font-medium text-slate-900">{auth.user?.username || 'Not available'}</p>
-            </div>
-          </div>
+    <AppLayout>
+      <div data-testid="profile-shell" className="mx-auto max-w-[950px] space-y-6">
+        <ProfileInfoCard
+          user={user}
+          linuxdoEnabled={linuxdoOAuthEnabled}
+          dingtalkEnabled={dingtalkOAuthEnabled}
+          oidcEnabled={oidcOAuthEnabled}
+          oidcProviderName={oidcOAuthProviderName}
+          wechatEnabled={wechatOAuthEnabled}
+          wechatOpenEnabled={wechatOAuthOpenEnabled}
+          wechatMpEnabled={wechatOAuthMPEnabled}
+        />
 
-          <div className="space-y-4 rounded-3xl border border-slate-100 bg-slate-50 p-5">
-            <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Usage & status</p>
-              <p className="mt-2 text-sm text-slate-600">Your account role and current profile state.</p>
-            </div>
-            <div className="grid gap-3">
-              <div className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Role</p>
-                <p className="mt-2 text-base font-semibold text-slate-900">{role}</p>
+        {contactInfo && (
+          <div className="card border-primary-200 bg-primary-50 p-6 dark:bg-primary-900/20">
+            <div className="flex items-center gap-4">
+              <div className="rounded-xl bg-primary-100 p-3 text-primary-600">
+                <Icon name="chat" size="lg" />
               </div>
-              <div className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Site</p>
-                <p className="mt-2 text-base font-semibold text-slate-900">{app.siteName || 'Sub2API'}</p>
-              </div>
-              <div className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Contact</p>
-                <p className="mt-2 text-base font-semibold text-slate-900">{app.contactInfo || 'Not configured'}</p>
+              <div>
+                <h3 className="font-semibold text-primary-800 dark:text-primary-200">{t('common.contactSupport')}</h3>
+                <p className="text-sm font-medium">{contactInfo}</p>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="rounded-3xl border border-slate-100 bg-slate-50 p-6">
-          <p className="text-sm font-semibold text-slate-900">Next steps</p>
-          <p className="mt-3 text-sm text-slate-600">This page currently shows read-only profile details. The next migration step is to add profile editing, password management, and connected account bindings.</p>
-        </div>
+        <ProfilePasswordForm />
+
+        {user && balanceLowNotifyEnabled && (
+          <ProfileBalanceNotifyCard
+            enabled={user.balance_notify_enabled ?? true}
+            threshold={user.balance_notify_threshold}
+            extraEmails={user.balance_notify_extra_emails ?? []}
+            systemDefaultThreshold={systemDefaultThreshold}
+            userEmail={user.email}
+          />
+        )}
+
+        <ProfileTotpCard />
       </div>
-    </PageShell>
+    </AppLayout>
   )
 }
