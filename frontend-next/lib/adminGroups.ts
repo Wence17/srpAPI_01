@@ -45,6 +45,14 @@ export async function list(
   return data
 }
 
+export async function getAll(platform?: GroupPlatform): Promise<AdminGroup[]> {
+  const { data } = await apiClient.get<AdminGroup[]>('/admin/groups/all', {
+    params: platform ? { platform } : undefined,
+  })
+  return data
+}
+
 export const adminGroupsAPI = {
   list,
+  getAll,
 }

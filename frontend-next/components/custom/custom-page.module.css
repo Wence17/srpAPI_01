@@ -1,0 +1,409 @@
+.customPageLayout {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px - 4rem);
+}
+
+.tocSidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid rgb(229 231 235);
+  background-color: rgb(249 250 251);
+  width: min(240px, 30%);
+  min-width: 160px;
+  max-width: 280px;
+  overflow: hidden;
+}
+
+:global(.dark) .tocSidebar {
+  border-right-color: rgb(71 85 105);
+  background-color: rgb(30 41 59);
+}
+
+@media (max-width: 640px) {
+  .tocSidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 20;
+    width: 70%;
+    max-width: 240px;
+    height: 100%;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.tocHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+:global(.dark) .tocHeader {
+  border-bottom-color: rgb(71 85 105);
+}
+
+.tocTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(55 65 81);
+}
+
+:global(.dark) .tocTitle {
+  color: rgb(226 232 240);
+}
+
+.tocCloseBtn {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: rgb(156 163 175);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.tocCloseBtn:hover {
+  color: rgb(75 85 99);
+  background-color: rgb(229 231 235);
+}
+
+:global(.dark) .tocCloseBtn:hover {
+  color: rgb(226 232 240);
+  background-color: rgb(71 85 105);
+}
+
+.tocNav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.tocItem {
+  display: block;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
+  transition: color 0.15s, background-color 0.15s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(75 85 99);
+  text-decoration: none;
+}
+
+.tocItem:hover {
+  color: rgb(17 24 39);
+  background-color: rgb(229 231 235);
+}
+
+:global(.dark) .tocItem {
+  color: rgb(203 213 225);
+}
+
+:global(.dark) .tocItem:hover {
+  color: rgb(255 255 255);
+  background-color: rgb(71 85 105);
+}
+
+.tocItemActive {
+  color: rgb(13 148 136);
+  background-color: rgb(240 253 250);
+  font-weight: 500;
+}
+
+:global(.dark) .tocItemActive {
+  color: rgb(45 212 191);
+  background-color: rgba(19, 78, 74, 0.2);
+}
+
+.tocLevel1 {
+  padding-left: 8px;
+}
+
+.tocLevel2 {
+  padding-left: 20px;
+}
+
+.tocLevel3 {
+  padding-left: 32px;
+}
+
+.tocLevel4 {
+  padding-left: 44px;
+}
+
+.tocToggleBtn {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  background-color: rgb(255 255 255);
+  border: 1px solid rgb(229 231 235);
+  color: rgb(75 85 99);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: color 0.15s, background-color 0.15s;
+  cursor: pointer;
+}
+
+.tocToggleBtn:hover {
+  background-color: rgb(243 244 246);
+}
+
+:global(.dark) .tocToggleBtn {
+  background-color: rgb(51 65 85);
+  border-color: rgb(100 116 139);
+  color: rgb(203 213 225);
+}
+
+:global(.dark) .tocToggleBtn:hover {
+  background-color: rgb(71 85 105);
+}
+
+.customEmbedShell {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: linear-gradient(to bottom, rgb(249 250 251), rgb(255 255 255));
+  padding: 0;
+}
+
+:global(.dark) .customEmbedShell {
+  background: linear-gradient(to bottom, rgb(15 23 42), rgb(2 6 23));
+}
+
+.customOpenFab {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  z-index: 10;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  backdrop-filter: blur(8px);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .customOpenFab {
+    background-color: rgba(255, 255, 255, 0.8);
+  }
+
+  :global(.dark) .customOpenFab {
+    background-color: rgba(30, 41, 59, 0.8);
+  }
+}
+
+.customEmbedFrame {
+  display: block;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.markdownPageContent {
+  flex: 1;
+  height: 100%;
+  overflow: auto;
+  padding: 1.5rem;
+  line-height: 1.7;
+  color: inherit;
+}
+
+@media (min-width: 768px) {
+  .markdownPageContent {
+    padding: 2.5rem;
+  }
+}
+
+.markdownPageContent h1 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgb(229 231 235);
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+:global(.dark) .markdownPageContent h1 {
+  border-bottom-color: rgb(71 85 105);
+}
+
+.markdownPageContent h2 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.markdownPageContent h3 {
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.markdownPageContent h4 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.markdownPageContent p {
+  margin-bottom: 1rem;
+}
+
+.markdownPageContent ul {
+  margin-bottom: 1rem;
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.markdownPageContent ol {
+  margin-bottom: 1rem;
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+}
+
+.markdownPageContent li {
+  margin-bottom: 0.25rem;
+}
+
+.markdownPageContent a {
+  color: rgb(20 184 166);
+  text-decoration: underline;
+}
+
+.markdownPageContent a:hover {
+  color: rgb(13 148 136);
+}
+
+.markdownPageContent blockquote {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid rgb(209 213 219);
+  padding-left: 1rem;
+  font-style: italic;
+  color: rgb(75 85 99);
+}
+
+:global(.dark) .markdownPageContent blockquote {
+  border-left-color: rgb(100 116 139);
+  color: rgb(203 213 225);
+}
+
+.markdownPageContent img {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.markdownPageContent table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.markdownPageContent th {
+  border: 1px solid rgb(209 213 219);
+  padding: 0.5rem 0.75rem;
+  background-color: rgb(249 250 251);
+  font-weight: 600;
+  text-align: left;
+}
+
+:global(.dark) .markdownPageContent th {
+  border-color: rgb(100 116 139);
+  background-color: rgb(51 65 85);
+}
+
+.markdownPageContent td {
+  border: 1px solid rgb(209 213 219);
+  padding: 0.5rem 0.75rem;
+}
+
+:global(.dark) .markdownPageContent td {
+  border-color: rgb(100 116 139);
+}
+
+.markdownPageContent code {
+  background-color: rgb(243 244 246);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:global(.dark) .markdownPageContent code {
+  background-color: rgb(51 65 85);
+}
+
+.markdownPageContent pre {
+  position: relative;
+  background-color: rgb(17 24 39);
+  color: rgb(243 244 246);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+:global(.dark) .markdownPageContent pre {
+  background-color: rgb(15 23 42);
+}
+
+.markdownPageContent pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.markdownPageContent hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-color: rgb(229 231 235);
+}
+
+:global(.dark) .markdownPageContent hr {
+  border-color: rgb(71 85 105);
+}
+
+.markdownPageContent :global(.copy-btn) {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  font-family: inherit;
+}
+
+.markdownPageContent :global(.copy-btn:hover) {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.markdownPageContent pre:hover :global(.copy-btn) {
+  opacity: 1;
+}

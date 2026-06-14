@@ -26,7 +26,20 @@ export async function updateSettings(settings: UpdateAdminSettingsRequest): Prom
   return data
 }
 
+export interface WebSearchEmulationConfig {
+  enabled?: boolean
+  providers?: unknown[]
+}
+
+export async function getWebSearchEmulationConfig(): Promise<WebSearchEmulationConfig> {
+  const { data } = await apiClient.get<WebSearchEmulationConfig>(
+    '/admin/settings/web-search-emulation',
+  )
+  return data
+}
+
 export const adminSettingsAPI = {
   getSettings,
   updateSettings,
+  getWebSearchEmulationConfig,
 }
