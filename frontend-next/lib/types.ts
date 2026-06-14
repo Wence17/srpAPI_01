@@ -386,6 +386,7 @@ export interface PublicSettings {
   frontend_url?: string
   api_base_url?: string
   doc_url?: string
+  home_content?: string
   version?: string
   backend_mode_enabled?: boolean
   payment_enabled?: boolean

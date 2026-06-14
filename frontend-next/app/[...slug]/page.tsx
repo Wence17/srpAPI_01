@@ -2,12 +2,6 @@
 
 import RouteGuard from '@/components/RouteGuard'
 
-interface PageProps {
-  params: {
-    slug?: string[]
-  }
-}
-
-export default function CatchAllPage({ params }: PageProps) {
+export default function CatchAllPage() {
   return <RouteGuard />
 }

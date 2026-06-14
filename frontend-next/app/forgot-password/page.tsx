@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
   useEffect(() => {
     getPublicSettings()
       .then((settings) => {
-        setTurnstileEnabled(settings.turnstile_enabled)
+        setTurnstileEnabled(settings.turnstile_enabled === true)
         setTurnstileSiteKey(settings.turnstile_site_key || '')
       })
       .catch((error) => {
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
       turnstileRef.current?.reset()
       setTurnstileToken('')
       app.showError(
-        extractI18nErrorMessage(error, t('auth.sendResetLinkFailed')),
+        extractI18nErrorMessage(error, t, 'auth.errors', t('auth.sendResetLinkFailed')),
       )
     } finally {
       setIsLoading(false)

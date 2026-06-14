@@ -163,7 +163,7 @@ export default function VerifyEmailPage() {
 
     getPublicSettings()
       .then((settings) => {
-        setTurnstileEnabled(settings.turnstile_enabled)
+        setTurnstileEnabled(settings.turnstile_enabled === true)
         setTurnstileSiteKey(settings.turnstile_site_key || '')
         setSiteName(settings.site_name || 'Sub2API')
         setRegistrationEmailSuffixWhitelist(

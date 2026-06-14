@@ -86,7 +86,7 @@ function ResetPasswordContent() {
       if (err.response?.data?.code === 'INVALID_RESET_TOKEN') {
         app.showError(t('auth.invalidOrExpiredToken'))
       } else {
-        app.showError(extractI18nErrorMessage(error, t('auth.resetPasswordFailed')))
+        app.showError(extractI18nErrorMessage(error, t, 'auth.errors', t('auth.resetPasswordFailed')))
       }
     } finally {
       setIsLoading(false)

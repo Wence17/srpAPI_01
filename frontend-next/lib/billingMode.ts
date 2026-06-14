@@ -1,6 +1,11 @@
-export const BILLING_MODE_TOKEN = 'token'
-export const BILLING_MODE_PER_REQUEST = 'per_request'
-export const BILLING_MODE_IMAGE = 'image'
+export const BILLING_MODE_TOKEN = 'token' as const
+export const BILLING_MODE_PER_REQUEST = 'per_request' as const
+export const BILLING_MODE_IMAGE = 'image' as const
+
+export type BillingMode =
+  | typeof BILLING_MODE_TOKEN
+  | typeof BILLING_MODE_PER_REQUEST
+  | typeof BILLING_MODE_IMAGE
 
 export function getBillingModeLabel(mode: string | null | undefined, t: (key: string) => string): string {
   switch (mode) {
