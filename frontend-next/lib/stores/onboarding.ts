@@ -1,63 +1,79 @@
 /**
- * Onboarding Store (stub)
- *
- * The original Pinia onboarding store drives the interactive product tour
- * (driver.js based) via `useOnboardingTour`. That tour is a separate, sizeable
- * subsystem that has not been migrated yet. This stub preserves the public
- * surface the layout/sidebar/header depend on so they compile and behave
- * gracefully (no tour steps active) until the full tour is ported:
- *
- *   - setReplayCallback(cb) — registers AppLayout's replay handler
- *   - replay()             — invokes the registered handler if present
- *   - isCurrentStep(sel)   — always false (no active step)
- *   - nextStep(delay)      — no-op
+ * Onboarding store — manages tour state and control methods across components.
+ * Verbatim port of frontend/src/stores/onboarding.ts.
  */
 
-import { createStore, useStore } from '../createStore'
+import type { Driver } from 'driver.js'
 
-type ReplayCallback = () => void
+type VoidCallback = () => void
+type NextStepCallback = (delay?: number) => Promise<void>
+type IsCurrentStepCallback = (selector: string) => boolean
 
-let replayCallback: ReplayCallback | null = null
+let replayCallback: VoidCallback | null = null
+let nextStepCallback: NextStepCallback | null = null
+let isCurrentStepCallback: IsCurrentStepCallback | null = null
+let driverInstance: Driver | null = null
 
-interface OnboardingState {
-  // Currently active tour step selector, or null when no tour is running.
-  currentStepSelector: string | null
+function setReplayCallback(callback: VoidCallback | null): void {
+  replayCallback = callback
 }
 
-const store = createStore<OnboardingState>({
-  currentStepSelector: null,
-})
-
-function setReplayCallback(cb: ReplayCallback | null) {
-  replayCallback = cb
+function setControlMethods(methods: {
+  nextStep: NextStepCallback
+  isCurrentStep: IsCurrentStepCallback
+}): void {
+  nextStepCallback = methods.nextStep
+  isCurrentStepCallback = methods.isCurrentStep
 }
 
-function replay() {
+function clearControlMethods(): void {
+  nextStepCallback = null
+  isCurrentStepCallback = null
+}
+
+function setDriverInstance(driver: Driver | null): void {
+  driverInstance = driver
+}
+
+function getDriverInstance(): Driver | null {
+  return driverInstance
+}
+
+function isDriverActive(): boolean {
+  return driverInstance?.isActive?.() ?? false
+}
+
+function replay(): void {
   replayCallback?.()
 }
 
-function isCurrentStep(selector: string): boolean {
-  return store.getState().currentStepSelector === selector
+async function nextStep(delay = 0): Promise<void> {
+  if (nextStepCallback) {
+    await nextStepCallback(delay)
+  }
 }
 
-function nextStep(_delay = 0): void {
-  // No-op until the interactive tour is migrated.
-  void _delay
+function isCurrentStep(selector: string): boolean {
+  if (isCurrentStepCallback) {
+    return isCurrentStepCallback(selector)
+  }
+  return false
 }
 
 export const onboardingStore = {
-  getState: store.getState,
-  subscribe: store.subscribe,
   setReplayCallback,
+  setControlMethods,
+  clearControlMethods,
+  setDriverInstance,
+  getDriverInstance,
+  isDriverActive,
   replay,
-  isCurrentStep,
   nextStep,
+  isCurrentStep,
 }
 
 export function useOnboardingStore() {
-  const currentStepSelector = useStore(store, (s) => s.currentStepSelector)
   return {
-    currentStepSelector,
     setReplayCallback,
     replay,
     isCurrentStep,

@@ -49,7 +49,7 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | undefined>(undefined)
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [siteName, setSiteName] = useState('Sub2API')
+  const [siteName, setSiteName] = useState('srpAPI')
   const [siteLogo, setSiteLogo] = useState('')
   const [siteVersion, setSiteVersion] = useState('')
   const [contactInfo, setContactInfo] = useState('')
@@ -80,8 +80,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const settings = (await getPublicSettings()) as PublicSettings
       setCachedPublicSettings(settings)
-      setSiteName(settings.site_name || 'Sub2API')
-      setSiteLogo(settings.site_logo || '')
+      setSiteName(settings.site_name || 'srpAPI')
+      setSiteLogo(settings.site_logo || '../../../images/logo.png')
       setSiteVersion(settings.version || '')
       setContactInfo(settings.contact_info || '')
       setApiBaseUrl(settings.api_base_url || '')
@@ -89,6 +89,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPublicSettingsLoaded(true)
     } catch (error) {
       console.error('Failed to fetch public settings:', error)
+      setPublicSettingsLoaded(true)
     }
   }, [])
 

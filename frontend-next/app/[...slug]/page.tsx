@@ -1,7 +1,5 @@
-'use client'
-
-import RouteGuard from '@/components/RouteGuard'
+import { notFound } from 'next/navigation'
 
 export default function CatchAllPage() {
-  return <RouteGuard />
+  notFound()
 }

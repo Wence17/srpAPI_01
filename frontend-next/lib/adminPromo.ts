@@ -16,8 +16,38 @@ export interface PromoCode {
   updated_at: string
 }
 
-export interface PromoCodeFilters {
+export interface PromoCodeUsage {
+  id: number
+  promo_code_id: number
+  user_id: number
+  bonus_amount: number
+  used_at: string
+  user?: {
+    id: number
+    email?: string
+    username?: string
+  }
+}
+
+export interface CreatePromoCodeRequest {
+  code?: string
+  bonus_amount: number
+  max_uses?: number
+  expires_at?: number | null
+  notes?: string
+}
+
+export interface UpdatePromoCodeRequest {
+  code?: string
+  bonus_amount?: number
+  max_uses?: number
   status?: PromoCodeStatus
+  expires_at?: number | null
+  notes?: string
+}
+
+export interface PromoCodeFilters {
+  status?: string
   search?: string
   sort_by?: string
   sort_order?: 'asc' | 'desc'
@@ -25,9 +55,9 @@ export interface PromoCodeFilters {
 
 export async function list(
   page: number = 1,
-  pageSize: number = 10,
+  pageSize: number = 20,
   filters?: PromoCodeFilters,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal },
 ): Promise<PaginatedResponse<PromoCode>> {
   const { data } = await apiClient.get<PaginatedResponse<PromoCode>>('/admin/promo-codes', {
     params: {
@@ -40,6 +70,43 @@ export async function list(
   return data
 }
 
+export async function getById(id: number): Promise<PromoCode> {
+  const { data } = await apiClient.get<PromoCode>(`/admin/promo-codes/${id}`)
+  return data
+}
+
+export async function create(request: CreatePromoCodeRequest): Promise<PromoCode> {
+  const { data } = await apiClient.post<PromoCode>('/admin/promo-codes', request)
+  return data
+}
+
+export async function update(id: number, request: UpdatePromoCodeRequest): Promise<PromoCode> {
+  const { data } = await apiClient.put<PromoCode>(`/admin/promo-codes/${id}`, request)
+  return data
+}
+
+export async function deleteCode(id: number): Promise<{ message: string }> {
+  const { data } = await apiClient.delete<{ message: string }>(`/admin/promo-codes/${id}`)
+  return data
+}
+
+export async function getUsages(
+  id: number,
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<PaginatedResponse<PromoCodeUsage>> {
+  const { data } = await apiClient.get<PaginatedResponse<PromoCodeUsage>>(
+    `/admin/promo-codes/${id}/usages`,
+    { params: { page, page_size: pageSize } },
+  )
+  return data
+}
+
 export const adminPromoAPI = {
   list,
+  getById,
+  create,
+  update,
+  delete: deleteCode,
+  getUsages,
 }

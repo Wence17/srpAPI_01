@@ -11,7 +11,8 @@ import { sanitizeHtml } from '@/lib/sanitize'
 import { sanitizeUrl } from '@/lib/url'
 import styles from './home.module.css'
 
-const GITHUB_URL = 'https://github.com/Wei-Shaw/sub2api'
+// const GITHUB_URL = 'https://github.com/Wei-Shaw/sub2api'
+const GITHUB_URL = 'https://github.com/Wence17/srpAPI_01'
 
 function initTheme(): boolean {
   if (typeof window === 'undefined') return false

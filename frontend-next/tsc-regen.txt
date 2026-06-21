@@ -1,0 +1,145 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+app/admin/settings/page.tsx(3040,10): error TS17008: JSX element 'form' has no corresponding closing tag.
+app/admin/settings/page.tsx(3829,51): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3834,21): error TS1005: ')' expected.
+app/admin/settings/page.tsx(3879,21): error TS1005: ')' expected.
+app/admin/settings/page.tsx(3881,23): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3882,23): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3882,32): error TS1136: Property assignment expected.
+app/admin/settings/page.tsx(3882,35): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3882,36): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(3882,40): error TS1109: Expression expected.
+app/admin/settings/page.tsx(3882,125): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(3882,126): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(3884,21): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(3899,23): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(3912,21): error TS1005: ')' expected.
+app/admin/settings/page.tsx(3915,19): error TS1005: ')' expected.
+app/admin/settings/page.tsx(3916,24): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3916,31): error TS1136: Property assignment expected.
+app/admin/settings/page.tsx(3918,45): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3920,19): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(3929,23): error TS1005: '}' expected.
+app/admin/settings/page.tsx(3951,25): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(4123,73): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(4178,17): error TS1005: ')' expected.
+app/admin/settings/page.tsx(4195,21): error TS1005: '}' expected.
+app/admin/settings/page.tsx(4215,15): error TS1005: ')' expected.
+app/admin/settings/page.tsx(4217,17): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(4240,15): error TS1005: ',' expected.
+app/admin/settings/page.tsx(4242,13): error TS17002: Expected corresponding JSX closing tag for 'AppLayout'.
+app/admin/settings/page.tsx(4243,9): error TS1005: ')' expected.
+app/admin/settings/page.tsx(5124,23): error TS1005: '}' expected.
+app/admin/settings/page.tsx(5124,25): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(5809,9): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(5908,73): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6061,37): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6061,50): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6061,61): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6065,38): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6065,51): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6065,62): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6158,81): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6160,35): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6232,111): error TS1005: '...' expected.
+app/admin/settings/page.tsx(6232,113): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6232,144): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6232,145): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6232,156): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6233,31): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(6266,29): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6266,31): error TS17002: Expected corresponding JSX closing tag for 'tbody'.
+app/admin/settings/page.tsx(6267,29): error TS17002: Expected corresponding JSX closing tag for 'table'.
+app/admin/settings/page.tsx(6268,27): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(6273,23): error TS1005: ';' expected.
+app/admin/settings/page.tsx(6273,24): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6274,15): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6275,13): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6276,11): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6277,9): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6649,21): error TS1005: '}' expected.
+app/admin/settings/page.tsx(6658,23): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(6745,21): error TS1005: '}' expected.
+app/admin/settings/page.tsx(6747,21): error TS1005: ')' expected.
+app/admin/settings/page.tsx(6748,26): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6749,23): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(6782,21): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6803,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(6804,78): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(6805,26): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6811,23): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(6821,28): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6822,23): error TS1005: '}' expected.
+app/admin/settings/page.tsx(6822,25): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(6844,15): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6845,13): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6846,11): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6849,16): error TS1005: ';' expected.
+app/admin/settings/page.tsx(6850,27): error TS1136: Property assignment expected.
+app/admin/settings/page.tsx(6850,30): error TS1005: ';' expected.
+app/admin/settings/page.tsx(6850,59): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6850,68): error TS1136: Property assignment expected.
+app/admin/settings/page.tsx(6850,120): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6850,121): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6868,17): error TS1161: Unterminated regular expression literal.
+app/admin/settings/page.tsx(6873,28): error TS1136: Property assignment expected.
+app/admin/settings/page.tsx(6873,31): error TS1005: ';' expected.
+app/admin/settings/page.tsx(6873,32): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6873,57): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(6874,17): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6878,19): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(6881,15): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(6903,15): error TS1005: ')' expected.
+app/admin/settings/page.tsx(6913,13): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6914,11): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6917,14): error TS1005: ';' expected.
+app/admin/settings/page.tsx(6918,11): error TS2657: JSX expressions must have one parent element.
+app/admin/settings/page.tsx(6943,9): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(6944,9): error TS1109: Expression expected.
+app/admin/settings/page.tsx(7179,17): error TS1005: ')' expected.
+app/admin/settings/page.tsx(7450,15): error TS1005: ')' expected.
+app/admin/settings/page.tsx(7452,17): error TS1005: ',' expected.
+app/admin/settings/page.tsx(7453,17): error TS1005: ',' expected.
+app/admin/settings/page.tsx(7454,17): error TS1005: ',' expected.
+app/admin/settings/page.tsx(7454,26): error TS1136: Property assignment expected.
+app/admin/settings/page.tsx(7454,29): error TS1005: ',' expected.
+app/admin/settings/page.tsx(7454,30): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(7454,45): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(7455,15): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(7470,17): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(7473,10): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(7663,17): error TS1005: ')' expected.
+app/admin/settings/page.tsx(8016,18): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(8016,117): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(8059,39): error TS1109: Expression expected.
+app/admin/settings/page.tsx(8127,18): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(8166,9): error TS1128: Declaration or statement expected.
+app/admin/settings/page.tsx(8170,10): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8172,12): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8204,14): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8215,16): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8389,18): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8407,20): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8409,22): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8422,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8422,164): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8435,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8435,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8456,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8456,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8471,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8471,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8484,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8484,257): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8494,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8494,164): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8510,35): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8510,62): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(9061,1): error TS1005: '</' expected.
+app/admin/settings/page.tsx(9061,1): error TS1160: Unterminated template literal.

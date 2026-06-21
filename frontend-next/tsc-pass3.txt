@@ -1,0 +1,66 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+app/admin/settings/page.tsx(734,73): error TS1005: ')' expected.
+app/admin/settings/page.tsx(3040,10): error TS17008: JSX element 'form' has no corresponding closing tag.
+app/admin/settings/page.tsx(3883,25): error TS1005: '{' expected.
+app/admin/settings/page.tsx(3886,23): error TS1005: '}' expected.
+app/admin/settings/page.tsx(4891,25): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(4892,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(4959,25): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(4960,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(5030,25): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(5031,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6123,122): error TS1002: Unterminated string literal.
+app/admin/settings/page.tsx(6124,49): error TS1005: ',' expected.
+app/admin/settings/page.tsx(6124,55): error TS1002: Unterminated string literal.
+app/admin/settings/page.tsx(6125,24): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6126,21): error TS1109: Expression expected.
+app/admin/settings/page.tsx(6629,25): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6630,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6651,30): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6652,21): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6654,23): error TS17002: Expected corresponding JSX closing tag for 'div'.
+app/admin/settings/page.tsx(6811,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(6812,78): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+app/admin/settings/page.tsx(6813,26): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6858,20): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6858,121): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(6875,26): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6876,18): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(7452,23): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(7453,22): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(8024,18): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(8024,117): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(8067,39): error TS1109: Expression expected.
+app/admin/settings/page.tsx(8135,18): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(8135,135): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(8172,11): error TS17002: Expected corresponding JSX closing tag for 'AppLayout'.
+app/admin/settings/page.tsx(8174,9): error TS1005: ')' expected.
+app/admin/settings/page.tsx(8178,10): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8180,12): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8212,14): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8223,16): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8397,18): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8415,20): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8417,22): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8430,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8430,164): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8443,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8443,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8464,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8464,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8479,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8479,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8492,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8492,257): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8502,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8502,164): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8518,35): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8518,62): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(9070,1): error TS1005: '</' expected.
+app/admin/settings/page.tsx(9070,1): error TS1160: Unterminated template literal.

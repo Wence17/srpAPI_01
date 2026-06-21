@@ -21,3 +21,15 @@ export const resolveUsageRequestType = (value: UsageRequestTypeLike): UsageReque
   }
   return value.stream ? 'stream' : 'sync'
 }
+
+export const requestTypeToLegacyStream = (
+  requestType?: UsageRequestType | null,
+): boolean | null | undefined => {
+  if (!requestType || requestType === 'unknown') {
+    return null
+  }
+  if (requestType === 'sync') {
+    return false
+  }
+  return true
+}

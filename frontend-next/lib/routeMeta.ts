@@ -5,6 +5,7 @@ export interface RouteMeta {
   requiresAuth?: boolean
   requiresAdmin?: boolean
   requiresPayment?: boolean
+  requiresRiskControl?: boolean
 }
 
 export const routeMeta: Record<string, RouteMeta> = {
@@ -55,14 +56,14 @@ export const routeMeta: Record<string, RouteMeta> = {
   '/admin/redeem': { title: 'Redeem Code Management', description: 'Manage redeem codes', originalComponent: 'RedeemView.vue', requiresAuth: true, requiresAdmin: true },
   '/admin/promo-codes': { title: 'Promo Code Management', description: 'Manage promo codes', originalComponent: 'PromoCodesView.vue', requiresAuth: true, requiresAdmin: true },
   '/admin/settings': { title: 'System Settings', description: 'Manage system configuration', originalComponent: 'SettingsView.vue', requiresAuth: true, requiresAdmin: true },
-  '/admin/risk-control': { title: 'Risk Control', description: 'Manage risk control rules', originalComponent: 'RiskControlView.vue', requiresAuth: true, requiresAdmin: true },
+  '/admin/risk-control': { title: 'Risk Control', description: 'Manage risk control rules', originalComponent: 'RiskControlView.vue', requiresAuth: true, requiresAdmin: true, requiresRiskControl: true },
   '/admin/usage': { title: 'Usage Records', description: 'Admin usage reports', originalComponent: 'UsageView.vue', requiresAuth: true, requiresAdmin: true },
   '/admin/affiliates/invites': { title: 'Affiliate Invite Records', description: 'Affiliate invite records', originalComponent: 'AdminAffiliateInvitesView.vue', requiresAuth: true, requiresAdmin: true },
   '/admin/affiliates/rebates': { title: 'Affiliate Rebate Records', description: 'Affiliate rebate records', originalComponent: 'AdminAffiliateRebatesView.vue', requiresAuth: true, requiresAdmin: true },
   '/admin/affiliates/transfers': { title: 'Affiliate Transfer Records', description: 'Affiliate transfer records', originalComponent: 'AdminAffiliateTransfersView.vue', requiresAuth: true, requiresAdmin: true },
-  '/admin/orders/dashboard': { title: 'Payment Dashboard', description: 'Admin payment dashboard', originalComponent: 'AdminPaymentDashboardView.vue', requiresAuth: true, requiresAdmin: true },
-  '/admin/orders': { title: 'Order Management', description: 'Manage orders', originalComponent: 'AdminOrdersView.vue', requiresAuth: true, requiresAdmin: true },
-  '/admin/orders/plans': { title: 'Subscription Plans', description: 'Manage payment plans', originalComponent: 'AdminPaymentPlansView.vue', requiresAuth: true, requiresAdmin: true },
+  '/admin/orders/dashboard': { title: 'Payment Dashboard', description: 'Admin payment dashboard', originalComponent: 'AdminPaymentDashboardView.vue', requiresAuth: true, requiresAdmin: true, requiresPayment: true },
+  '/admin/orders': { title: 'Order Management', description: 'Manage orders', originalComponent: 'AdminOrdersView.vue', requiresAuth: true, requiresAdmin: true, requiresPayment: true },
+  '/admin/orders/plans': { title: 'Subscription Plans', description: 'Manage payment plans', originalComponent: 'AdminPaymentPlansView.vue', requiresAuth: true, requiresAdmin: true, requiresPayment: true },
 }
 
 /**

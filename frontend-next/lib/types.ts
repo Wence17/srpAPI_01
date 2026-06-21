@@ -53,17 +53,126 @@ export interface CustomEndpoint {
   description: string
 }
 
+export interface OpenAIMessagesDispatchModelConfig {
+  opus_mapped_model?: string
+  sonnet_mapped_model?: string
+  haiku_mapped_model?: string
+  exact_model_mappings?: Record<string, string>
+}
+
+export interface ModelsListConfig {
+  enabled: boolean
+  models: string[]
+}
+
 export interface Group {
   id: number
   name: string
   description: string | null
   platform: GroupPlatform
   rate_multiplier: number
+  rpm_limit?: number
+  is_exclusive: boolean
+  status: 'active' | 'inactive'
+  subscription_type: SubscriptionType
+  daily_limit_usd: number | null
+  weekly_limit_usd: number | null
+  monthly_limit_usd: number | null
+  allow_image_generation: boolean
+  image_rate_independent: boolean
+  image_rate_multiplier: number
+  image_price_1k: number | null
+  image_price_2k: number | null
+  image_price_4k: number | null
+  claude_code_only: boolean
+  fallback_group_id: number | null
+  fallback_group_id_on_invalid_request: number | null
+  allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  require_oauth_only: boolean
+  require_privacy_set: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminGroup extends Group {
+  model_routing: Record<string, number[]> | null
+  model_routing_enabled: boolean
+  mcp_xml_inject: boolean
+  supported_model_scopes?: string[]
+  account_count?: number
+  active_account_count?: number
+  rate_limited_account_count?: number
+  models_list_config?: ModelsListConfig
+  sort_order: number
+}
+
+export interface CreateGroupRequest {
+  name: string
+  description?: string | null
+  platform?: GroupPlatform
+  rate_multiplier?: number
+  is_exclusive?: boolean
+  subscription_type?: SubscriptionType
+  daily_limit_usd?: number | null
+  weekly_limit_usd?: number | null
+  monthly_limit_usd?: number | null
+  allow_image_generation?: boolean
+  image_rate_independent?: boolean
+  image_rate_multiplier?: number
+  image_price_1k?: number | null
+  image_price_2k?: number | null
+  image_price_4k?: number | null
+  claude_code_only?: boolean
+  fallback_group_id?: number | null
+  fallback_group_id_on_invalid_request?: number | null
+  mcp_xml_inject?: boolean
+  supported_model_scopes?: string[]
+  models_list_config?: ModelsListConfig
+  allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  model_routing?: Record<string, number[]> | null
+  model_routing_enabled?: boolean
+  rpm_limit?: number
+  require_oauth_only?: boolean
+  require_privacy_set?: boolean
+  copy_accounts_from_group_ids?: number[]
+}
+
+export interface UpdateGroupRequest {
+  name?: string
+  description?: string | null
+  platform?: GroupPlatform
+  rate_multiplier?: number
   is_exclusive?: boolean
   status?: 'active' | 'inactive'
-  subscription_type: SubscriptionType
-  account_count?: number
+  subscription_type?: SubscriptionType
+  daily_limit_usd?: number | null
+  weekly_limit_usd?: number | null
+  monthly_limit_usd?: number | null
+  allow_image_generation?: boolean
+  image_rate_independent?: boolean
+  image_rate_multiplier?: number
+  image_price_1k?: number | null
+  image_price_2k?: number | null
+  image_price_4k?: number | null
+  claude_code_only?: boolean
+  fallback_group_id?: number | null
+  fallback_group_id_on_invalid_request?: number | null
+  mcp_xml_inject?: boolean
+  supported_model_scopes?: string[]
+  models_list_config?: ModelsListConfig
   allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  model_routing?: Record<string, number[]> | null
+  model_routing_enabled?: boolean
+  rpm_limit?: number
+  require_oauth_only?: boolean
+  require_privacy_set?: boolean
+  copy_accounts_from_group_ids?: number[]
 }
 
 export interface BasePaginationResponse<T> {
@@ -152,7 +261,66 @@ export interface UsageLog {
   cache_ttl_overridden: boolean
   billing_mode?: string | null
   created_at: string
+  user?: User & { deleted_at?: string | null }
   api_key?: ApiKey
+  group?: {
+    id: number
+    name: string
+  }
+}
+
+export interface UsageLogAccountSummary {
+  id: number
+  name: string
+}
+
+export interface AdminUsageLog extends UsageLog {
+  upstream_model?: string | null
+  model_mapping_chain?: string | null
+  account_rate_multiplier?: number | null
+  account_stats_cost?: number | null
+  channel_id?: number | null
+  billing_tier?: string | null
+  ip_address?: string | null
+  account?: UsageLogAccountSummary
+}
+
+export interface UsageCleanupFilters {
+  start_time: string
+  end_time: string
+  user_id?: number
+  api_key_id?: number
+  account_id?: number
+  group_id?: number
+  model?: string | null
+  request_type?: UsageRequestType | null
+  stream?: boolean | null
+  billing_type?: number | null
+}
+
+export interface UsageCleanupTask {
+  id: number
+  status: string
+  filters: UsageCleanupFilters
+  created_by: number
+  deleted_rows: number
+  error_message?: string | null
+  canceled_by?: number | null
+  canceled_at?: string | null
+  started_at?: string | null
+  finished_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupStat {
+  group_id: number
+  group_name: string
+  requests: number
+  total_tokens: number
+  cost: number
+  actual_cost: number
+  account_cost: number
 }
 
 export interface BatchApiKeyUsageStats {
@@ -215,10 +383,11 @@ export interface UsageQueryParams {
   user_id?: number
   account_id?: number
   group_id?: number
-  model?: string
-  request_type?: UsageRequestType
-  stream?: boolean
+  model?: string | null
+  request_type?: UsageRequestType | null
+  stream?: boolean | null
   billing_type?: number | null
+  billing_mode?: string | null
   start_date?: string
   end_date?: string
   sort_by?: string
@@ -399,6 +568,7 @@ export interface PublicSettings {
   risk_control_enabled?: boolean
   affiliate_enabled?: boolean
   channel_monitor_enabled?: boolean
+  channel_monitor_default_interval_seconds?: number
   available_channels_enabled?: boolean
   custom_menu_items?: CustomMenuItem[]
   registration_enabled?: boolean
