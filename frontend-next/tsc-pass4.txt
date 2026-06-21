@@ -1,0 +1,39 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+app/admin/settings/page.tsx(1207,6): error TS1005: ',' expected.
+app/admin/settings/page.tsx(1307,4): error TS1005: ',' expected.
+app/admin/settings/page.tsx(1770,6): error TS1005: ',' expected.
+app/admin/settings/page.tsx(3038,6): error TS17008: JSX element 'AppLayout' has no corresponding closing tag.
+app/admin/settings/page.tsx(3039,8): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(3040,10): error TS17008: JSX element 'form' has no corresponding closing tag.
+app/admin/settings/page.tsx(6889,26): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(6890,18): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+app/admin/settings/page.tsx(8084,39): error TS1109: Expression expected.
+app/admin/settings/page.tsx(8198,10): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8200,12): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8232,14): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8243,16): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8417,18): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8435,20): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8437,22): error TS17008: JSX element 'div' has no corresponding closing tag.
+app/admin/settings/page.tsx(8450,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8450,164): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8463,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8463,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8484,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8484,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8499,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8499,65): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8512,37): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8512,257): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8522,39): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8522,164): error TS1005: '...' expected.
+app/admin/settings/page.tsx(8538,35): error TS1005: '}' expected.
+app/admin/settings/page.tsx(8538,62): error TS1003: Identifier expected.
+app/admin/settings/page.tsx(9089,1): error TS1005: '</' expected.
+app/admin/settings/page.tsx(9089,1): error TS1160: Unterminated template literal.

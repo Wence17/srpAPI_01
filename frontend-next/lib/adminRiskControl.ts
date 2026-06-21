@@ -9,22 +9,6 @@ export interface ContentModerationModelFilter {
   models: string[]
 }
 
-export interface ContentModerationAPIKeyStatus {
-  index: number
-  key_hash: string
-  masked: string
-  status: 'unknown' | 'ok' | 'error' | 'frozen'
-  failure_count: number
-  success_count: number
-  last_error: string
-  last_checked_at?: string
-  frozen_until?: string
-  last_latency_ms: number
-  last_http_status: number
-  last_tested: boolean
-  configured: boolean
-}
-
 export interface ContentModerationConfig {
   enabled: boolean
   mode: ModerationMode
@@ -56,6 +40,81 @@ export interface ContentModerationConfig {
   blocked_keywords: string[]
   keyword_blocking_mode: KeywordBlockingMode
   model_filter: ContentModerationModelFilter
+}
+
+export type ContentModerationAPIKeyStatusValue = 'unknown' | 'ok' | 'error' | 'frozen'
+
+export interface ContentModerationAPIKeyStatus {
+  index: number
+  key_hash: string
+  masked: string
+  status: ContentModerationAPIKeyStatusValue
+  failure_count: number
+  success_count: number
+  last_error: string
+  last_checked_at?: string
+  frozen_until?: string
+  last_latency_ms: number
+  last_http_status: number
+  last_tested: boolean
+  configured: boolean
+}
+
+export interface TestContentModerationAPIKeysPayload {
+  api_keys?: string[]
+  base_url?: string
+  model?: string
+  timeout_ms?: number
+  prompt?: string
+  images?: string[]
+}
+
+export interface TestContentModerationAPIKeysResponse {
+  items: ContentModerationAPIKeyStatus[]
+  audit_result?: ContentModerationTestAuditResult
+  image_count: number
+}
+
+export interface ContentModerationTestAuditResult {
+  flagged: boolean
+  highest_category: string
+  highest_score: number
+  composite_score: number
+  category_scores: Record<string, number>
+  thresholds: Record<string, number>
+}
+
+export interface UpdateContentModerationConfig {
+  enabled?: boolean
+  mode?: ModerationMode
+  base_url?: string
+  model?: string
+  api_key?: string
+  api_keys?: string[]
+  api_keys_mode?: 'append' | 'replace'
+  delete_api_key_hashes?: string[]
+  clear_api_key?: boolean
+  timeout_ms?: number
+  sample_rate?: number
+  all_groups?: boolean
+  group_ids?: number[]
+  record_non_hits?: boolean
+  thresholds?: Record<string, number>
+  worker_count?: number
+  queue_size?: number
+  block_status?: number
+  block_message?: string
+  email_on_hit?: boolean
+  auto_ban_enabled?: boolean
+  ban_threshold?: number
+  violation_window_hours?: number
+  retry_count?: number
+  hit_retention_days?: number
+  non_hit_retention_days?: number
+  pre_hash_check_enabled?: boolean
+  blocked_keywords?: string[]
+  keyword_blocking_mode?: KeywordBlockingMode
+  model_filter?: ContentModerationModelFilter
 }
 
 export interface ContentModerationRuntimeStatus {
@@ -94,7 +153,7 @@ export interface ContentModerationAPIKeyLoad {
   index: number
   key_hash: string
   masked: string
-  status: 'unknown' | 'ok' | 'error' | 'frozen'
+  status: ContentModerationAPIKeyStatusValue
   active: number
   total: number
   success: number
@@ -104,37 +163,67 @@ export interface ContentModerationAPIKeyLoad {
   last_http_status: number
 }
 
-export interface UpdateContentModerationConfig {
-  enabled?: boolean
-  mode?: ModerationMode
-  base_url?: string
-  model?: string
-  api_key?: string
-  api_keys?: string[]
-  api_keys_mode?: 'append' | 'replace'
-  delete_api_key_hashes?: string[]
-  clear_api_key?: boolean
-  timeout_ms?: number
-  sample_rate?: number
-  all_groups?: boolean
-  group_ids?: number[]
-  record_non_hits?: boolean
-  thresholds?: Record<string, number>
-  worker_count?: number
-  queue_size?: number
-  block_status?: number
-  block_message?: string
-  email_on_hit?: boolean
-  auto_ban_enabled?: boolean
-  ban_threshold?: number
-  violation_window_hours?: number
-  retry_count?: number
-  hit_retention_days?: number
-  non_hit_retention_days?: number
-  pre_hash_check_enabled?: boolean
-  blocked_keywords?: string[]
-  keyword_blocking_mode?: KeywordBlockingMode
-  model_filter?: ContentModerationModelFilter
+export interface ContentModerationLog {
+  id: number
+  request_id: string
+  user_id: number | null
+  user_email: string
+  api_key_id: number | null
+  api_key_name: string
+  group_id: number | null
+  group_name: string
+  endpoint: string
+  provider: string
+  model: string
+  mode: string
+  action: string
+  flagged: boolean
+  highest_category: string
+  highest_score: number
+  category_scores: Record<string, number>
+  threshold_snapshot: Record<string, number>
+  input_excerpt: string
+  upstream_latency_ms: number | null
+  error: string
+  violation_count: number
+  auto_banned: boolean
+  email_sent: boolean
+  user_status: string
+  queue_delay_ms: number | null
+  created_at: string
+}
+
+export interface ListContentModerationLogsParams {
+  page?: number
+  page_size?: number
+  result?: string
+  group_id?: number
+  endpoint?: string
+  search?: string
+  from?: string
+  to?: string
+}
+
+export interface ContentModerationLogsResponse {
+  items: ContentModerationLog[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+}
+
+export interface ContentModerationUnbanUserResponse {
+  user_id: number
+  status: string
+}
+
+export interface DeleteFlaggedHashResponse {
+  input_hash: string
+  deleted: boolean
+}
+
+export interface ClearFlaggedHashesResponse {
+  deleted: number
 }
 
 export async function getConfig(): Promise<ContentModerationConfig> {
@@ -142,7 +231,9 @@ export async function getConfig(): Promise<ContentModerationConfig> {
   return data
 }
 
-export async function updateConfig(payload: UpdateContentModerationConfig): Promise<ContentModerationConfig> {
+export async function updateConfig(
+  payload: UpdateContentModerationConfig
+): Promise<ContentModerationConfig> {
   const { data } = await apiClient.put<ContentModerationConfig>('/admin/risk-control/config', payload)
   return data
 }
@@ -152,8 +243,52 @@ export async function getStatus(): Promise<ContentModerationRuntimeStatus> {
   return data
 }
 
+export async function testAPIKeys(
+  payload: TestContentModerationAPIKeysPayload = {}
+): Promise<TestContentModerationAPIKeysResponse> {
+  const { data } = await apiClient.post<TestContentModerationAPIKeysResponse>('/admin/risk-control/api-keys/test', payload)
+  return data
+}
+
+export async function listLogs(
+  params: ListContentModerationLogsParams = {}
+): Promise<ContentModerationLogsResponse> {
+  const { data } = await apiClient.get<ContentModerationLogsResponse>('/admin/risk-control/logs', {
+    params,
+  })
+  return data
+}
+
+export async function unbanUser(userID: number): Promise<ContentModerationUnbanUserResponse> {
+  const { data } = await apiClient.post<ContentModerationUnbanUserResponse>(
+    `/admin/risk-control/users/${userID}/unban`
+  )
+  return data
+}
+
+export async function deleteFlaggedHash(inputHash: string): Promise<DeleteFlaggedHashResponse> {
+  const { data } = await apiClient.delete<DeleteFlaggedHashResponse>('/admin/risk-control/hashes', {
+    data: { input_hash: inputHash },
+  })
+  return data
+}
+
+export async function clearFlaggedHashes(): Promise<ClearFlaggedHashesResponse> {
+  const { data } = await apiClient.delete<ClearFlaggedHashesResponse>('/admin/risk-control/hashes/all')
+  return data
+}
+
 export const adminRiskControlAPI = {
   getConfig,
   updateConfig,
   getStatus,
+  testAPIKeys,
+  listLogs,
+  unbanUser,
+  deleteFlaggedHash,
+  clearFlaggedHashes,
 }
+
+export const riskControlAPI = adminRiskControlAPI
+
+export default adminRiskControlAPI

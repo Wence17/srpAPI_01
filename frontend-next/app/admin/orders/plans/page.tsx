@@ -1,156 +1,264 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import PageShell from '@/components/PageShell'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
+import { useApp } from '@/context/AppContext'
+import { extractI18nErrorMessage } from '@/lib/apiError'
 import { adminPaymentAPI, type SubscriptionPlan } from '@/lib/adminPayment'
-import { adminGroupsAPI, type AdminGroup } from '@/lib/adminGroups'
+import { adminGroupsAPI } from '@/lib/adminGroups'
+import { platformTextClass } from '@/lib/platformColors'
+import type { AdminGroup } from '@/lib/types'
+import type { Column } from '@/components/common/types'
+import AppLayout from '@/components/layout/AppLayout'
+import DataTable from '@/components/common/DataTable'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
+import Icon from '@/components/icons/Icon'
+import GroupBadge from '@/components/keys/GroupBadge'
+import PlanEditDialog from '@/components/admin/payment/PlanEditDialog'
 
-function formatMoney(value: number, currency = 'USD') {
-  return `${currency} ${value.toFixed(2)}`
+function parsePlanFeatures(
+  plan: Omit<SubscriptionPlan, 'features'> & { features: string | string[] },
+): SubscriptionPlan {
+  return {
+    ...plan,
+    features:
+      typeof plan.features === 'string'
+        ? plan.features
+            .split('\n')
+            .map((feature) => feature.trim())
+            .filter(Boolean)
+        : plan.features || [],
+  }
 }
 
-export default function SubscriptionPlansPage() {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+export default function AdminPaymentPlansPage() {
+  const { t } = useI18n()
+  const appStore = useApp()
+
   const [groups, setGroups] = useState<AdminGroup[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [savingPlanId, setSavingPlanId] = useState<number | null>(null)
+  const [plansLoading, setPlansLoading] = useState(false)
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+  const [showPlanDialog, setShowPlanDialog] = useState(false)
+  const [showDeletePlanDialog, setShowDeletePlanDialog] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null)
+  const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null)
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const [planResponse, groupResponse] = await Promise.all([
-          adminPaymentAPI.getPlans(),
-          adminGroupsAPI.list(1, 100),
-        ])
-
-        setPlans(
-          planResponse.map((plan) => {
-            const rawFeatures = plan.features as unknown as string | string[] | null | undefined
-            return {
-              ...plan,
-              features: Array.isArray(rawFeatures)
-                ? rawFeatures
-                : typeof rawFeatures === 'string'
-                ? rawFeatures.split('\n').map((feature) => feature.trim()).filter(Boolean)
-                : [],
-            }
-          })
-        )
-        setGroups(groupResponse.items)
-      } catch (err) {
-        setError((err as Error)?.message || 'Unable to load subscription plans.')
-      } finally {
-        setLoading(false)
-      }
+  const loadGroups = useCallback(async () => {
+    try {
+      const data = await adminGroupsAPI.getAll()
+      setGroups(data)
+    } catch {
+      /* ignore */
     }
-
-    loadData()
   }, [])
 
-  const groupById = useMemo(() => {
-    return groups.reduce<Record<number, AdminGroup>>((map, group) => {
-      map[group.id] = group
-      return map
-    }, {})
-  }, [groups])
-
-  const toggleForSale = async (plan: SubscriptionPlan) => {
-    setSavingPlanId(plan.id)
+  const loadPlans = useCallback(async () => {
+    setPlansLoading(true)
     try {
-      const updated = await adminPaymentAPI.updatePlan(plan.id, { for_sale: !plan.for_sale })
-      setPlans((current) => current.map((currentPlan) => (currentPlan.id === plan.id ? updated : currentPlan)))
-    } catch (err) {
-      setError((err as Error)?.message || 'Unable to update plan.')
+      const data = await adminPaymentAPI.getPlans()
+      setPlans(
+        (data || []).map((plan) =>
+          parsePlanFeatures(plan as Omit<SubscriptionPlan, 'features'> & { features: string | string[] }),
+        ),
+      )
+    } catch (err: unknown) {
+      appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
     } finally {
-      setSavingPlanId(null)
+      setPlansLoading(false)
+    }
+  }, [appStore, t])
+
+  useEffect(() => {
+    loadGroups()
+    loadPlans()
+  }, [loadGroups, loadPlans])
+
+  function getGroup(id: number): AdminGroup | undefined {
+    return groups.find((group) => group.id === id)
+  }
+
+  function isGroupMissing(id: number): boolean {
+    return id > 0 && !groups.find((group) => group.id === id)
+  }
+
+  function getPlanNameClass(groupId: number): string {
+    const group = getGroup(groupId)
+    return group ? platformTextClass(group.platform) : 'text-gray-900 dark:text-white'
+  }
+
+  const planColumns = useMemo<Column[]>(
+    () => [
+      { key: 'id', label: 'ID' },
+      { key: 'name', label: t('payment.admin.planName') },
+      { key: 'group_id', label: t('payment.admin.group') },
+      { key: 'price', label: t('payment.admin.price') },
+      { key: 'validity_days', label: t('payment.admin.validityDays') },
+      { key: 'for_sale', label: t('payment.admin.forSale') },
+      { key: 'sort_order', label: t('payment.admin.sortOrder') },
+      { key: 'actions', label: t('common.actions') },
+    ],
+    [t],
+  )
+
+  function openPlanEdit(plan: SubscriptionPlan | null) {
+    setEditingPlan(plan)
+    setShowPlanDialog(true)
+  }
+
+  async function toggleForSale(plan: SubscriptionPlan) {
+    try {
+      await adminPaymentAPI.updatePlan(plan.id, { for_sale: !plan.for_sale })
+      setPlans((current) =>
+        current.map((currentPlan) =>
+          currentPlan.id === plan.id ? { ...currentPlan, for_sale: !plan.for_sale } : currentPlan,
+        ),
+      )
+    } catch (err: unknown) {
+      appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+    }
+  }
+
+  function confirmDeletePlan(plan: SubscriptionPlan) {
+    setDeletingPlanId(plan.id)
+    setShowDeletePlanDialog(true)
+  }
+
+  async function handleDeletePlan() {
+    if (!deletingPlanId) return
+    try {
+      await adminPaymentAPI.deletePlan(deletingPlanId)
+      appStore.showSuccess(t('common.deleted'))
+      setShowDeletePlanDialog(false)
+      setDeletingPlanId(null)
+      loadPlans()
+    } catch (err: unknown) {
+      appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
     }
   }
 
   return (
-    <PageShell title="Subscription Plans" description="Manage payment plans" path="/admin/orders/plans">
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Subscription plans</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Review payment plans and toggle availability for sale.
-              </p>
-            </div>
-          </div>
+    <AppLayout>
+      <div className="space-y-4">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => loadPlans()}
+            disabled={plansLoading}
+            className="btn btn-secondary"
+            title={t('common.refresh')}
+          >
+            <Icon name="refresh" size="md" className={plansLoading ? 'animate-spin' : ''} />
+          </button>
+          <button type="button" onClick={() => openPlanEdit(null)} className="btn btn-primary">
+            {t('payment.admin.createPlan')}
+          </button>
         </div>
 
-        {loading ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-600">
-            Loading plans...
-          </div>
-        ) : error ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
-            <p className="font-semibold">Unable to load plans</p>
-            <p className="mt-2 text-sm">{error}</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm text-slate-500">Showing {plans.length} plans</p>
-            </div>
-
-            <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Group</th>
-                    <th className="px-4 py-3">Price</th>
-                    <th className="px-4 py-3">Validity</th>
-                    <th className="px-4 py-3">For sale</th>
-                    <th className="px-4 py-3">Sort</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                  {plans.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
-                        No subscription plans available.
-                      </td>
-                    </tr>
-                  ) : (
-                    plans.map((plan) => (
-                      <tr key={plan.id} className="odd:bg-slate-50">
-                        <td className="px-4 py-4 font-medium text-slate-900">{plan.name}</td>
-                        <td className="px-4 py-4">
-                          {groupById[plan.group_id]?.name ?? `#${plan.group_id}`}
-                        </td>
-                        <td className="px-4 py-4">{formatMoney(plan.price)}</td>
-                        <td className="px-4 py-4">
-                          {plan.validity_days} {plan.validity_unit}
-                        </td>
-                        <td className="px-4 py-4 capitalize">{plan.for_sale ? 'Yes' : 'No'}</td>
-                        <td className="px-4 py-4">{plan.sort_order}</td>
-                        <td className="px-4 py-4">
-                          <button
-                            type="button"
-                            onClick={() => toggleForSale(plan)}
-                            disabled={savingPlanId === plan.id}
-                            className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {savingPlanId === plan.id ? 'Saving…' : plan.for_sale ? 'Disable' : 'Enable'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <DataTable
+          columns={planColumns}
+          data={plans}
+          loading={plansLoading}
+          cells={{
+            name: ({ value, row }) => (
+              <span className={`text-sm font-medium ${getPlanNameClass(row.group_id as number)}`}>
+                {value as string}
+              </span>
+            ),
+            group_id: ({ value }) => {
+              const groupId = value as number
+              if (isGroupMissing(groupId)) {
+                return (
+                  <span className="text-sm">
+                    <span className="text-gray-400">#{groupId}</span>
+                    <span className="badge badge-danger ml-1">{t('payment.admin.groupMissing')}</span>
+                  </span>
+                )
+              }
+              const group = getGroup(groupId)
+              if (group) {
+                return (
+                  <GroupBadge
+                    name={group.name}
+                    platform={group.platform}
+                    rateMultiplier={group.rate_multiplier}
+                  />
+                )
+              }
+              return <span className="text-sm text-gray-400">-</span>
+            },
+            price: ({ value, row }) => (
+              <div className="text-sm">
+                <span className="font-medium text-gray-900 dark:text-white">
+                  ${((value as number) ?? 0).toFixed(2)}
+                </span>
+                {row.original_price ? (
+                  <span className="ml-1 text-xs text-gray-400 line-through">
+                    ${(row.original_price as number).toFixed(2)}
+                  </span>
+                ) : null}
+              </div>
+            ),
+            validity_days: ({ value, row }) => (
+              <span className="text-sm">
+                {value as number} {t('payment.admin.' + ((row.validity_unit as string) || 'days'))}
+              </span>
+            ),
+            for_sale: ({ value, row }) => (
+              <button
+                type="button"
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                  value ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
+                }`}
+                onClick={() => toggleForSale(row as SubscriptionPlan)}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    value ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            ),
+            actions: ({ row }) => (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openPlanEdit(row as SubscriptionPlan)}
+                  className="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                >
+                  <Icon name="edit" size="sm" />
+                  <span className="text-xs">{t('common.edit')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmDeletePlan(row as SubscriptionPlan)}
+                  className="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                >
+                  <Icon name="trash" size="sm" />
+                  <span className="text-xs">{t('common.delete')}</span>
+                </button>
+              </div>
+            ),
+          }}
+        />
       </div>
-    </PageShell>
+
+      <PlanEditDialog
+        show={showPlanDialog}
+        plan={editingPlan}
+        groups={groups}
+        onClose={() => setShowPlanDialog(false)}
+        onSaved={loadPlans}
+      />
+
+      <ConfirmDialog
+        show={showDeletePlanDialog}
+        title={t('payment.admin.deletePlan')}
+        message={t('payment.admin.deletePlanConfirm')}
+        confirmText={t('common.delete')}
+        danger
+        onConfirm={handleDeletePlan}
+        onCancel={() => setShowDeletePlanDialog(false)}
+      />
+    </AppLayout>
   )
 }

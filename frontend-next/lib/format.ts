@@ -122,3 +122,109 @@ export function formatCurrency(amount: number | null | undefined, currency: stri
     maximumFractionDigits: fractionDigits,
   }).format(amount)
 }
+
+export function formatBytes(bytes: number, decimals = 2): string {
+  if (bytes === 0) return '0 Bytes'
+
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
+
+export function formatNumber(num: number | null | undefined): string {
+  if (num === null || num === undefined) return '0'
+
+  const locale = getLocale()
+  const absNum = Math.abs(num)
+
+  const formatter = new Intl.NumberFormat(locale, {
+    notation: absNum >= 10000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  })
+
+  return formatter.format(num)
+}
+
+export function formatDateTimeLocalInput(timestampSeconds: number | null): string {
+  if (!timestampSeconds) return ''
+  const date = new Date(timestampSeconds * 1000)
+  if (isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+export function parseDateTimeLocalInput(value: string): number | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return null
+  return Math.floor(date.getTime() / 1000)
+}
+
+export function formatTime(date: string | Date | null | undefined): string {
+  return formatDate(date, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+
+export function formatCompactNumber(
+  num: number | null | undefined,
+  options?: { allowBillions?: boolean },
+): string {
+  if (num === null || num === undefined) return '0'
+
+  const abs = Math.abs(num)
+  const allowBillions = options?.allowBillions !== false
+
+  if (allowBillions && abs >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${(num / 1_000).toFixed(1)}K`
+  return num.toString()
+}
+
+export function formatCountdown(
+  targetDate: string | Date | null | undefined,
+  t: TranslateFn,
+): string | null {
+  if (!targetDate) return null
+
+  const now = new Date()
+  const target = new Date(targetDate)
+  const diffMs = target.getTime() - now.getTime()
+
+  if (diffMs <= 0 || isNaN(diffMs)) return null
+
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  const remainingHours = diffHours % 24
+  const remainingMins = diffMins % 60
+
+  if (diffDays > 0) {
+    return t('common.time.countdown.daysHours', { d: diffDays, h: remainingHours })
+  }
+  if (diffHours > 0) {
+    return t('common.time.countdown.hoursMinutes', { h: diffHours, m: remainingMins })
+  }
+  return t('common.time.countdown.minutes', { m: diffMins })
+}
+
+export function formatCountdownWithSuffix(
+  targetDate: string | Date | null | undefined,
+  t: TranslateFn,
+): string | null {
+  const countdown = formatCountdown(targetDate, t)
+  if (!countdown) return null
+  return t('common.time.countdown.withSuffix', { time: countdown })
+}

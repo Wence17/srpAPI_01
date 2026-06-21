@@ -8,8 +8,11 @@ export interface Toast {
   createdAt: number
 }
 
+export type PlatformQuotaPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity'
+export type PlatformQuotaWindow = 'daily' | 'weekly' | 'monthly'
+
 export interface PlatformQuotaItem {
-  platform: string
+  platform: PlatformQuotaPlatform | string
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null
@@ -37,7 +40,7 @@ export interface PaginatedResponse<T> {
   total: number
   page: number
   page_size: number
-  pages?: number
+  pages: number
 }
 
 export type GroupPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | string
@@ -50,17 +53,126 @@ export interface CustomEndpoint {
   description: string
 }
 
+export interface OpenAIMessagesDispatchModelConfig {
+  opus_mapped_model?: string
+  sonnet_mapped_model?: string
+  haiku_mapped_model?: string
+  exact_model_mappings?: Record<string, string>
+}
+
+export interface ModelsListConfig {
+  enabled: boolean
+  models: string[]
+}
+
 export interface Group {
   id: number
   name: string
   description: string | null
   platform: GroupPlatform
   rate_multiplier: number
+  rpm_limit?: number
+  is_exclusive: boolean
+  status: 'active' | 'inactive'
+  subscription_type: SubscriptionType
+  daily_limit_usd: number | null
+  weekly_limit_usd: number | null
+  monthly_limit_usd: number | null
+  allow_image_generation: boolean
+  image_rate_independent: boolean
+  image_rate_multiplier: number
+  image_price_1k: number | null
+  image_price_2k: number | null
+  image_price_4k: number | null
+  claude_code_only: boolean
+  fallback_group_id: number | null
+  fallback_group_id_on_invalid_request: number | null
+  allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  require_oauth_only: boolean
+  require_privacy_set: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminGroup extends Group {
+  model_routing: Record<string, number[]> | null
+  model_routing_enabled: boolean
+  mcp_xml_inject: boolean
+  supported_model_scopes?: string[]
+  account_count?: number
+  active_account_count?: number
+  rate_limited_account_count?: number
+  models_list_config?: ModelsListConfig
+  sort_order: number
+}
+
+export interface CreateGroupRequest {
+  name: string
+  description?: string | null
+  platform?: GroupPlatform
+  rate_multiplier?: number
+  is_exclusive?: boolean
+  subscription_type?: SubscriptionType
+  daily_limit_usd?: number | null
+  weekly_limit_usd?: number | null
+  monthly_limit_usd?: number | null
+  allow_image_generation?: boolean
+  image_rate_independent?: boolean
+  image_rate_multiplier?: number
+  image_price_1k?: number | null
+  image_price_2k?: number | null
+  image_price_4k?: number | null
+  claude_code_only?: boolean
+  fallback_group_id?: number | null
+  fallback_group_id_on_invalid_request?: number | null
+  mcp_xml_inject?: boolean
+  supported_model_scopes?: string[]
+  models_list_config?: ModelsListConfig
+  allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  model_routing?: Record<string, number[]> | null
+  model_routing_enabled?: boolean
+  rpm_limit?: number
+  require_oauth_only?: boolean
+  require_privacy_set?: boolean
+  copy_accounts_from_group_ids?: number[]
+}
+
+export interface UpdateGroupRequest {
+  name?: string
+  description?: string | null
+  platform?: GroupPlatform
+  rate_multiplier?: number
   is_exclusive?: boolean
   status?: 'active' | 'inactive'
-  subscription_type: SubscriptionType
-  account_count?: number
+  subscription_type?: SubscriptionType
+  daily_limit_usd?: number | null
+  weekly_limit_usd?: number | null
+  monthly_limit_usd?: number | null
+  allow_image_generation?: boolean
+  image_rate_independent?: boolean
+  image_rate_multiplier?: number
+  image_price_1k?: number | null
+  image_price_2k?: number | null
+  image_price_4k?: number | null
+  claude_code_only?: boolean
+  fallback_group_id?: number | null
+  fallback_group_id_on_invalid_request?: number | null
+  mcp_xml_inject?: boolean
+  supported_model_scopes?: string[]
+  models_list_config?: ModelsListConfig
   allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  model_routing?: Record<string, number[]> | null
+  model_routing_enabled?: boolean
+  rpm_limit?: number
+  require_oauth_only?: boolean
+  require_privacy_set?: boolean
+  copy_accounts_from_group_ids?: number[]
 }
 
 export interface BasePaginationResponse<T> {
@@ -149,7 +261,66 @@ export interface UsageLog {
   cache_ttl_overridden: boolean
   billing_mode?: string | null
   created_at: string
+  user?: User & { deleted_at?: string | null }
   api_key?: ApiKey
+  group?: {
+    id: number
+    name: string
+  }
+}
+
+export interface UsageLogAccountSummary {
+  id: number
+  name: string
+}
+
+export interface AdminUsageLog extends UsageLog {
+  upstream_model?: string | null
+  model_mapping_chain?: string | null
+  account_rate_multiplier?: number | null
+  account_stats_cost?: number | null
+  channel_id?: number | null
+  billing_tier?: string | null
+  ip_address?: string | null
+  account?: UsageLogAccountSummary
+}
+
+export interface UsageCleanupFilters {
+  start_time: string
+  end_time: string
+  user_id?: number
+  api_key_id?: number
+  account_id?: number
+  group_id?: number
+  model?: string | null
+  request_type?: UsageRequestType | null
+  stream?: boolean | null
+  billing_type?: number | null
+}
+
+export interface UsageCleanupTask {
+  id: number
+  status: string
+  filters: UsageCleanupFilters
+  created_by: number
+  deleted_rows: number
+  error_message?: string | null
+  canceled_by?: number | null
+  canceled_at?: string | null
+  started_at?: string | null
+  finished_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupStat {
+  group_id: number
+  group_name: string
+  requests: number
+  total_tokens: number
+  cost: number
+  actual_cost: number
+  account_cost: number
 }
 
 export interface BatchApiKeyUsageStats {
@@ -212,10 +383,11 @@ export interface UsageQueryParams {
   user_id?: number
   account_id?: number
   group_id?: number
-  model?: string
-  request_type?: UsageRequestType
-  stream?: boolean
+  model?: string | null
+  request_type?: UsageRequestType | null
+  stream?: boolean | null
   billing_type?: number | null
+  billing_mode?: string | null
   start_date?: string
   end_date?: string
   sort_by?: string
@@ -332,13 +504,16 @@ export interface CustomMenuItem {
   label: string
   path?: string
   icon_svg?: string
+  url?: string
+  page_slug?: string
   visibility?: 'user' | 'admin' | string
   sort_order: number
 }
 
 export interface LoginAgreementDocument {
-  id?: string
+  id: string
   title: string
+  content_md: string
 }
 
 /** Notification email entry with enable/disable and verification state.
@@ -393,6 +568,7 @@ export interface PublicSettings {
   risk_control_enabled?: boolean
   affiliate_enabled?: boolean
   channel_monitor_enabled?: boolean
+  channel_monitor_default_interval_seconds?: number
   available_channels_enabled?: boolean
   custom_menu_items?: CustomMenuItem[]
   registration_enabled?: boolean
@@ -644,6 +820,179 @@ export interface PendingAuthSessionSummary {
 
 export type LoginResponse = AuthResponse | TotpLoginResponse
 
+// ==================== Admin User Management ====================
+
+export interface AdminUser extends User {
+  notes: string
+  last_used_at?: string | null
+  deleted_at?: string | null
+  group_rates?: Record<number, number>
+  current_concurrency?: number
+  allowed_groups?: number[] | null
+  rpm_limit?: number
+  last_active_at?: string | null
+  subscriptions?: UserSubscription[]
+}
+
+export interface UpdateUserRequest {
+  email?: string
+  password?: string
+  username?: string
+  notes?: string
+  role?: 'admin' | 'user'
+  balance?: number
+  concurrency?: number
+  rpm_limit?: number
+  status?: 'active' | 'disabled'
+  allowed_groups?: number[] | null
+  group_rates?: Record<number, number | null>
+}
+
+export interface BalanceHistoryItem {
+  id: number
+  code: string
+  type: string
+  value: number
+  status: string
+  used_by: number | null
+  used_at: string | null
+  created_at: string
+  group_id: number | null
+  validity_days: number
+  notes: string
+  user?: { id: number; email: string } | null
+  group?: { id: number; name: string } | null
+}
+
+export interface BalanceHistoryResponse extends PaginatedResponse<BalanceHistoryItem> {
+  total_recharged: number
+}
+
+export interface PlatformQuotaUpdateItem {
+  platform: PlatformQuotaPlatform
+  daily_limit_usd: number | null
+  weekly_limit_usd: number | null
+  monthly_limit_usd: number | null
+}
+
+export interface AdminBindAuthIdentityChannelRequest {
+  channel: string
+  channel_app_id: string
+  channel_subject: string
+  metadata?: Record<string, unknown> | null
+}
+
+export interface AdminBindAuthIdentityRequest {
+  provider_type: string
+  provider_key: string
+  provider_subject: string
+  issuer?: string | null
+  metadata?: Record<string, unknown> | null
+  channel?: AdminBindAuthIdentityChannelRequest
+}
+
+export interface AdminBoundAuthIdentityChannel {
+  channel: string
+  channel_app_id: string
+  channel_subject: string
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminBoundAuthIdentity {
+  user_id: number
+  provider_type: string
+  provider_key: string
+  provider_subject: string
+  verified_at?: string | null
+  issuer?: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+  channel?: AdminBoundAuthIdentityChannel | null
+}
+
+// ==================== User Attributes ====================
+
+export type UserAttributeType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'email'
+  | 'url'
+  | 'date'
+  | 'select'
+  | 'multi_select'
+
+export interface UserAttributeOption {
+  value: string
+  label: string
+  [key: string]: unknown
+}
+
+export interface UserAttributeValidation {
+  min_length?: number
+  max_length?: number
+  min?: number
+  max?: number
+  pattern?: string
+  message?: string
+}
+
+export interface UserAttributeDefinition {
+  id: number
+  key: string
+  name: string
+  description: string
+  type: UserAttributeType
+  options: UserAttributeOption[]
+  required: boolean
+  validation: UserAttributeValidation
+  placeholder: string
+  display_order: number
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface UserAttributeValue {
+  id: number
+  user_id: number
+  attribute_id: number
+  value: string
+  created_at: string
+  updated_at: string
+}
+
+export type UserAttributeValuesMap = Record<number, string>
+
+export interface CreateUserAttributeRequest {
+  key: string
+  name: string
+  description?: string
+  type: UserAttributeType
+  options?: UserAttributeOption[]
+  required?: boolean
+  validation?: UserAttributeValidation
+  placeholder?: string
+  display_order?: number
+  enabled?: boolean
+}
+
+export interface UpdateUserAttributeRequest {
+  key?: string
+  name?: string
+  description?: string
+  type?: UserAttributeType
+  options?: UserAttributeOption[]
+  required?: boolean
+  validation?: UserAttributeValidation
+  placeholder?: string
+  display_order?: number
+  enabled?: boolean
+}
+
 export interface RouteMeta {
   title: string
   description?: string
@@ -651,4 +1000,581 @@ export interface RouteMeta {
   requiresAuth?: boolean
   requiresAdmin?: boolean
   requiresPayment?: boolean
+}
+
+export interface FetchOptions {
+  signal?: AbortSignal
+}
+
+// ==================== Account & Proxy Types ====================
+
+export type AccountPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity'
+export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account'
+export type OAuthAddMethod = 'oauth' | 'setup-token'
+export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
+
+export interface ClaudeModel {
+  id: string
+  type: string
+  display_name: string
+  created_at: string
+}
+
+export interface Proxy {
+  id: number
+  name: string
+  protocol: ProxyProtocol
+  host: string
+  port: number
+  username: string | null
+  password?: string | null
+  status: 'active' | 'inactive'
+  account_count?: number
+  latency_ms?: number
+  latency_status?: 'success' | 'failed'
+  latency_message?: string
+  ip_address?: string
+  country?: string
+  country_code?: string
+  region?: string
+  city?: string
+  quality_status?: 'healthy' | 'warn' | 'challenge' | 'failed'
+  quality_score?: number
+  quality_grade?: string
+  quality_summary?: string
+  quality_checked?: number
+  last_used_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProxyAccountSummary {
+  id: number
+  name: string
+  platform: AccountPlatform
+  type: AccountType
+  notes?: string | null
+}
+
+export interface ProxyQualityCheckItem {
+  target: string
+  status: 'pass' | 'warn' | 'fail' | 'challenge'
+  http_status?: number
+  latency_ms?: number
+  message?: string
+  cf_ray?: string
+}
+
+export interface ProxyQualityCheckResult {
+  proxy_id: number
+  score: number
+  grade: string
+  summary: string
+  exit_ip?: string
+  country?: string
+  country_code?: string
+  base_latency_ms?: number
+  passed_count: number
+  warn_count: number
+  failed_count: number
+  challenge_count: number
+  checked_at: number
+  items: ProxyQualityCheckItem[]
+}
+
+export interface GeminiCredentials {
+  api_key?: string
+  access_token?: string
+  refresh_token?: string
+  oauth_type?: 'code_assist' | 'google_one' | 'ai_studio' | string
+  tier_id?:
+    | 'google_one_free'
+    | 'google_ai_pro'
+    | 'google_ai_ultra'
+    | 'gcp_standard'
+    | 'gcp_enterprise'
+    | 'aistudio_free'
+    | 'aistudio_paid'
+    | 'LEGACY'
+    | 'PRO'
+    | 'ULTRA'
+    | string
+  project_id?: string
+  token_type?: string
+  scope?: string
+  expires_at?: string
+  model_mapping?: Record<string, string>
+}
+
+export interface TempUnschedulableRule {
+  error_code: number
+  keywords: string[]
+  duration_minutes: number
+  description: string
+}
+
+export interface TempUnschedulableState {
+  until_unix: number
+  triggered_at_unix: number
+  status_code: number
+  matched_keyword: string
+  rule_index: number
+  error_message: string
+}
+
+export interface TempUnschedulableStatus {
+  active: boolean
+  state?: TempUnschedulableState
+}
+
+export interface Account {
+  id: number
+  name: string
+  notes?: string | null
+  platform: AccountPlatform
+  type: AccountType
+  credentials?: Record<string, unknown>
+  credentials_status?: Record<string, boolean>
+  extra?: (CodexUsageSnapshot &
+    OpenAICompactState & {
+      model_rate_limits?: Record<string, { rate_limited_at: string; rate_limit_reset_at: string }>
+      antigravity_credits_overages?: Record<string, { activated_at: string; active_until: string }>
+    } & Record<string, unknown>)
+  proxy_id: number | null
+  concurrency: number
+  load_factor?: number | null
+  current_concurrency?: number
+  priority: number
+  rate_multiplier?: number
+  status: 'active' | 'inactive' | 'error'
+  error_message: string | null
+  last_used_at: string | null
+  expires_at: number | null
+  auto_pause_on_expired: boolean
+  created_at: string
+  updated_at: string
+  proxy?: Proxy
+  group_ids?: number[]
+  groups?: Group[]
+  schedulable: boolean
+  rate_limited_at: string | null
+  rate_limit_reset_at: string | null
+  overload_until: string | null
+  temp_unschedulable_until: string | null
+  temp_unschedulable_reason: string | null
+  session_window_start: string | null
+  session_window_end: string | null
+  session_window_status: 'allowed' | 'allowed_warning' | 'rejected' | null
+  window_cost_limit?: number | null
+  window_cost_sticky_reserve?: number | null
+  max_sessions?: number | null
+  session_idle_timeout_minutes?: number | null
+  base_rpm?: number | null
+  rpm_strategy?: string | null
+  rpm_sticky_buffer?: number | null
+  user_msg_queue_mode?: string | null
+  enable_tls_fingerprint?: boolean | null
+  tls_fingerprint_profile_id?: number | null
+  session_id_masking_enabled?: boolean | null
+  cache_ttl_override_enabled?: boolean | null
+  cache_ttl_override_target?: string | null
+  custom_base_url_enabled?: boolean | null
+  custom_base_url?: string | null
+  quota_limit?: number | null
+  quota_used?: number | null
+  quota_daily_limit?: number | null
+  quota_daily_used?: number | null
+  quota_weekly_limit?: number | null
+  quota_weekly_used?: number | null
+  quota_daily_reset_mode?: 'rolling' | 'fixed' | null
+  quota_daily_reset_hour?: number | null
+  quota_weekly_reset_mode?: 'rolling' | 'fixed' | null
+  quota_weekly_reset_day?: number | null
+  quota_weekly_reset_hour?: number | null
+  quota_reset_timezone?: string | null
+  quota_daily_reset_at?: string | null
+  quota_weekly_reset_at?: string | null
+  current_window_cost?: number | null
+  active_sessions?: number | null
+  current_rpm?: number | null
+}
+
+export interface WindowStats {
+  requests: number
+  tokens: number
+  cost: number
+  standard_cost?: number
+  user_cost?: number
+}
+
+export interface UsageProgress {
+  utilization: number
+  resets_at: string | null
+  remaining_seconds: number
+  window_stats?: WindowStats | null
+  used_requests?: number
+  limit_requests?: number
+}
+
+export interface AntigravityModelQuota {
+  utilization: number
+  reset_time: string
+}
+
+export interface AccountUsageInfo {
+  source?: 'passive' | 'active'
+  updated_at: string | null
+  five_hour: UsageProgress | null
+  seven_day: UsageProgress | null
+  seven_day_sonnet: UsageProgress | null
+  gemini_shared_daily?: UsageProgress | null
+  gemini_pro_daily?: UsageProgress | null
+  gemini_flash_daily?: UsageProgress | null
+  gemini_shared_minute?: UsageProgress | null
+  gemini_pro_minute?: UsageProgress | null
+  gemini_flash_minute?: UsageProgress | null
+  antigravity_quota?: Record<string, AntigravityModelQuota> | null
+  ai_credits?: Array<{
+    credit_type?: string
+    amount?: number
+    minimum_balance?: number
+  }> | null
+  is_forbidden?: boolean
+  forbidden_reason?: string
+  forbidden_type?: string
+  validation_url?: string
+  needs_verify?: boolean
+  is_banned?: boolean
+  needs_reauth?: boolean
+  error_code?: string
+  error?: string
+}
+
+export interface CodexUsageSnapshot {
+  codex_primary_used_percent?: number
+  codex_primary_reset_after_seconds?: number
+  codex_primary_window_minutes?: number
+  codex_secondary_used_percent?: number
+  codex_secondary_reset_after_seconds?: number
+  codex_secondary_window_minutes?: number
+  codex_primary_over_secondary_percent?: number
+  codex_5h_used_percent?: number
+  codex_5h_reset_after_seconds?: number
+  codex_5h_reset_at?: string
+  codex_5h_window_minutes?: number
+  codex_7d_used_percent?: number
+  codex_7d_reset_after_seconds?: number
+  codex_7d_reset_at?: string
+  codex_7d_window_minutes?: number
+  codex_usage_updated_at?: string
+}
+
+export type OpenAICompactMode = 'auto' | 'force_on' | 'force_off'
+export type OpenAIResponsesMode = 'auto' | 'force_responses' | 'force_chat_completions'
+export type OpenAIEndpointCapability = 'chat_completions' | 'embeddings'
+
+export interface OpenAICompactState {
+  openai_compact_mode?: OpenAICompactMode
+  openai_compact_supported?: boolean
+  openai_compact_checked_at?: string
+  openai_compact_last_status?: number
+  openai_compact_last_error?: string
+}
+
+export interface OpenAIResponsesState {
+  openai_responses_mode?: OpenAIResponsesMode
+  openai_responses_supported?: boolean
+}
+
+export interface CreateAccountRequest {
+  name: string
+  notes?: string | null
+  platform: AccountPlatform
+  type: AccountType
+  credentials: Record<string, unknown>
+  extra?: Record<string, unknown>
+  proxy_id?: number | null
+  concurrency?: number
+  load_factor?: number | null
+  priority?: number
+  rate_multiplier?: number
+  group_ids?: number[]
+  expires_at?: number | null
+  auto_pause_on_expired?: boolean
+  confirm_mixed_channel_risk?: boolean
+}
+
+export interface UpdateAccountRequest {
+  name?: string
+  notes?: string | null
+  type?: AccountType
+  credentials?: Record<string, unknown>
+  extra?: Record<string, unknown>
+  proxy_id?: number | null
+  concurrency?: number
+  load_factor?: number | null
+  priority?: number
+  rate_multiplier?: number
+  schedulable?: boolean
+  status?: 'active' | 'inactive' | 'error'
+  group_ids?: number[]
+  expires_at?: number | null
+  auto_pause_on_expired?: boolean
+  confirm_mixed_channel_risk?: boolean
+}
+
+export interface CheckMixedChannelRequest {
+  platform: AccountPlatform
+  group_ids: number[]
+  account_id?: number
+}
+
+export interface MixedChannelWarningDetails {
+  group_id: number
+  group_name: string
+  current_platform: string
+  other_platform: string
+}
+
+export interface CheckMixedChannelResponse {
+  has_risk: boolean
+  error?: string
+  message?: string
+  details?: MixedChannelWarningDetails
+}
+
+export interface CreateProxyRequest {
+  name: string
+  protocol: ProxyProtocol
+  host: string
+  port: number
+  username?: string | null
+  password?: string | null
+}
+
+export interface UpdateProxyRequest {
+  name?: string
+  protocol?: ProxyProtocol
+  host?: string
+  port?: number
+  username?: string | null
+  password?: string | null
+  status?: 'active' | 'inactive'
+}
+
+export interface AdminDataPayload {
+  type?: string
+  version?: number
+  exported_at: string
+  proxies: AdminDataProxy[]
+  accounts: AdminDataAccount[]
+}
+
+export interface AdminDataProxy {
+  proxy_key: string
+  name: string
+  protocol: ProxyProtocol
+  host: string
+  port: number
+  username?: string | null
+  password?: string | null
+  status: 'active' | 'inactive'
+}
+
+export interface AdminDataAccount {
+  name: string
+  notes?: string | null
+  platform: AccountPlatform
+  type: AccountType
+  credentials: Record<string, unknown>
+  extra?: Record<string, unknown>
+  proxy_key?: string | null
+  concurrency: number
+  priority: number
+  rate_multiplier?: number | null
+  expires_at?: number | null
+  auto_pause_on_expired?: boolean
+}
+
+export interface AdminDataImportError {
+  kind: 'proxy' | 'account'
+  name?: string
+  proxy_key?: string
+  message: string
+}
+
+export interface AdminDataImportResult {
+  proxy_created: number
+  proxy_reused: number
+  proxy_failed: number
+  account_created: number
+  account_failed: number
+  errors?: AdminDataImportError[]
+}
+
+export interface CodexSessionImportRequest {
+  content?: string
+  contents?: string[]
+  name?: string
+  notes?: string | null
+  group_ids?: number[]
+  proxy_id?: number | null
+  concurrency?: number
+  priority?: number
+  rate_multiplier?: number
+  load_factor?: number | null
+  expires_at?: number | null
+  auto_pause_on_expired?: boolean
+  credential_extras?: Record<string, unknown>
+  extra?: Record<string, unknown>
+  update_existing?: boolean
+  skip_default_group_bind?: boolean
+  confirm_mixed_channel_risk?: boolean
+}
+
+export interface CodexSessionImportMessage {
+  index: number
+  name?: string
+  message: string
+}
+
+export interface CodexSessionImportItem {
+  index: number
+  name?: string
+  action: 'created' | 'updated' | 'skipped' | 'failed'
+  account_id?: number
+  message?: string
+}
+
+export interface CodexSessionImportResult {
+  total: number
+  created: number
+  updated: number
+  skipped: number
+  failed: number
+  items?: CodexSessionImportItem[]
+  warnings?: CodexSessionImportMessage[]
+  errors?: CodexSessionImportMessage[]
+}
+
+// ==================== Account Usage Statistics ====================
+
+export interface ModelStat {
+  model: string
+  requests: number
+  input_tokens: number
+  output_tokens: number
+  cache_creation_tokens: number
+  cache_read_tokens: number
+  total_tokens: number
+  cost: number
+  actual_cost: number
+  account_cost: number
+}
+
+export interface EndpointStat {
+  endpoint: string
+  requests: number
+  total_tokens: number
+  cost: number
+  actual_cost: number
+}
+
+export interface AccountUsageHistory {
+  date: string
+  label: string
+  requests: number
+  tokens: number
+  cost: number
+  actual_cost: number
+  user_cost: number
+}
+
+export interface AccountUsageSummary {
+  days: number
+  actual_days_used: number
+  total_cost: number
+  total_user_cost: number
+  total_standard_cost: number
+  total_requests: number
+  total_tokens: number
+  avg_daily_cost: number
+  avg_daily_user_cost: number
+  avg_daily_requests: number
+  avg_daily_tokens: number
+  avg_duration_ms: number
+  today: {
+    date: string
+    cost: number
+    user_cost: number
+    requests: number
+    tokens: number
+  } | null
+  highest_cost_day: {
+    date: string
+    label: string
+    cost: number
+    user_cost: number
+    requests: number
+  } | null
+  highest_request_day: {
+    date: string
+    label: string
+    requests: number
+    cost: number
+    user_cost: number
+  } | null
+}
+
+export interface AccountUsageStatsResponse {
+  history: AccountUsageHistory[]
+  summary: AccountUsageSummary
+  models: ModelStat[]
+  endpoints: EndpointStat[]
+  upstream_endpoints: EndpointStat[]
+}
+
+// ==================== Scheduled Test Types ====================
+
+export interface ScheduledTestPlan {
+  id: number
+  account_id: number
+  model_id: string
+  cron_expression: string
+  enabled: boolean
+  max_results: number
+  auto_recover: boolean
+  last_run_at: string | null
+  next_run_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ScheduledTestResult {
+  id: number
+  plan_id: number
+  status: string
+  response_text: string
+  error_message: string
+  latency_ms: number
+  started_at: string
+  finished_at: string
+  created_at: string
+}
+
+export interface CreateScheduledTestPlanRequest {
+  account_id: number
+  model_id: string
+  cron_expression: string
+  enabled?: boolean
+  max_results?: number
+  auto_recover?: boolean
+}
+
+export interface UpdateScheduledTestPlanRequest {
+  model_id?: string
+  cron_expression?: string
+  enabled?: boolean
+  max_results?: number
+  auto_recover?: boolean
 }

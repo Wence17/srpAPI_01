@@ -1,193 +1,363 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import PageShell from '@/components/PageShell'
-import { adminChannelMonitorAPI, type ChannelMonitor, type Provider } from '@/lib/adminChannelMonitor'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useI18n } from '@/lib/i18n'
+import { useApp } from '@/context/AppContext'
+import { extractApiErrorMessage } from '@/lib/apiError'
+import {
+  adminChannelMonitorAPI,
+  type ChannelMonitor,
+  type CheckResult,
+  type ListParams,
+  type Provider,
+} from '@/lib/adminChannelMonitor'
+import { getPersistedPageSize, setPersistedPageSize } from '@/lib/usePersistedPageSize'
+import { useChannelMonitorFormat } from '@/lib/useChannelMonitorFormat'
+import AppLayout from '@/components/layout/AppLayout'
+import TablePageLayout from '@/components/layout/TablePageLayout'
+import DataTable, { type DataTableCellContext } from '@/components/common/DataTable'
+import Pagination from '@/components/common/Pagination'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
+import EmptyState from '@/components/common/EmptyState'
+import HelpTooltip from '@/components/common/HelpTooltip'
+import Icon from '@/components/icons/Icon'
+import Toggle from '@/components/common/Toggle'
+import MonitorFiltersBar from '@/components/admin/monitor/MonitorFiltersBar'
+import MonitorFormDialog from '@/components/admin/monitor/MonitorFormDialog'
+import MonitorTemplateManagerDialog from '@/components/admin/monitor/MonitorTemplateManagerDialog'
+import MonitorRunResultDialog from '@/components/admin/monitor/MonitorRunResultDialog'
+import MonitorPrimaryModelCell from '@/components/admin/monitor/MonitorPrimaryModelCell'
+import MonitorActionsCell from '@/components/admin/monitor/MonitorActionsCell'
+import type { Column } from '@/components/common/types'
 
-const pageSize = 10
-
-function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString()
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const { name, code } = error as { name?: string; code?: string }
+  return name === 'AbortError' || name === 'CanceledError' || code === 'ERR_CANCELED'
 }
 
 export default function ChannelMonitorPage() {
+  const { t } = useI18n()
+  const appStore = useApp()
+  const { providerLabel, providerBadgeClass, formatLatency, formatAvailability } =
+    useChannelMonitorFormat()
+
   const [monitors, setMonitors] = useState<ChannelMonitor[]>([])
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [provider, setProvider] = useState<Provider | 'all'>('all')
-  const [enabled, setEnabled] = useState<'all' | 'enabled' | 'disabled'>('all')
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [runningId, setRunningId] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [providerFilter, setProviderFilter] = useState<Provider | ''>('')
+  const [enabledFilter, setEnabledFilter] = useState<'' | 'true' | 'false'>('')
+  const [pagination, setPagination] = useState({
+    page: 1,
+    page_size: getPersistedPageSize(),
+    total: 0,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
+  const [showDialog, setShowDialog] = useState(false)
+  const [showTemplateManager, setShowTemplateManager] = useState(false)
+  const [editing, setEditing] = useState<ChannelMonitor | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState<ChannelMonitor | null>(null)
+  const [showRunResult, setShowRunResult] = useState(false)
+  const [runResults, setRunResults] = useState<CheckResult[]>([])
 
-    async function loadMonitors() {
-      setLoading(true)
-      setError(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchQueryRef = useRef(searchQuery)
+  searchQueryRef.current = searchQuery
 
-      try {
-        const response = await adminChannelMonitorAPI.list({
-          page,
-          page_size: pageSize,
-          provider: provider === 'all' ? undefined : provider,
-          enabled: enabled === 'all' ? undefined : enabled === 'enabled',
-          search: search.trim() || undefined,
-        }, {
-          signal: controller.signal,
-        })
+  const columns = useMemo<Column[]>(
+    () => [
+      { key: 'name', label: t('admin.channelMonitor.columns.name'), sortable: false },
+      { key: 'provider', label: t('admin.channelMonitor.columns.provider'), sortable: false },
+      {
+        key: 'primary_model',
+        label: t('admin.channelMonitor.columns.primaryModel'),
+        sortable: false,
+      },
+      {
+        key: 'availability_7d',
+        label: t('admin.channelMonitor.columns.availability7d'),
+        sortable: false,
+      },
+      { key: 'latency', label: t('admin.channelMonitor.columns.latency'), sortable: false },
+      { key: 'enabled', label: t('admin.channelMonitor.columns.enabled'), sortable: false },
+      { key: 'actions', label: t('admin.channelMonitor.columns.actions'), sortable: false },
+    ],
+    [t],
+  )
 
-        if (cancelled) return
-        setMonitors(response.items)
-        setTotal(response.total)
-      } catch (err) {
-        if (cancelled) return
-        setError((err as Error)?.message || 'Unable to load channel monitors.')
-      } finally {
-        if (!cancelled) setLoading(false)
+  const deleteConfirmMessage = deleting
+    ? t('admin.channelMonitor.deleteConfirm', { name: deleting.name })
+    : ''
+
+  const reload = useCallback(async () => {
+    if (abortControllerRef.current) abortControllerRef.current.abort()
+    const ctrl = new AbortController()
+    abortControllerRef.current = ctrl
+    setLoading(true)
+    try {
+      const params: ListParams = {
+        page: pagination.page,
+        page_size: pagination.page_size,
+      }
+      if (providerFilter) params.provider = providerFilter
+      if (enabledFilter === 'true') params.enabled = true
+      if (enabledFilter === 'false') params.enabled = false
+      if (debouncedSearch) params.search = debouncedSearch
+
+      const res = await adminChannelMonitorAPI.list(params, { signal: ctrl.signal })
+      if (ctrl.signal.aborted || abortControllerRef.current !== ctrl) return
+      setMonitors(res.items || [])
+      setPagination((prev) => ({ ...prev, total: res.total }))
+    } catch (error) {
+      if (isAbortError(error)) return
+      appStore.showError(extractApiErrorMessage(error, t('admin.channelMonitor.loadError')))
+    } finally {
+      if (abortControllerRef.current === ctrl) {
+        setLoading(false)
+        abortControllerRef.current = null
       }
     }
+  }, [
+    pagination.page,
+    pagination.page_size,
+    providerFilter,
+    enabledFilter,
+    debouncedSearch,
+    appStore,
+    t,
+  ])
 
-    loadMonitors()
+  useEffect(() => {
+    void reload()
+  }, [reload])
+
+  useEffect(() => {
     return () => {
-      cancelled = true
-      controller.abort()
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+      abortControllerRef.current?.abort()
     }
-  }, [page, provider, enabled, search])
+  }, [])
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const handleSearch = () => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQueryRef.current.trim())
+      setPagination((prev) => ({ ...prev, page: 1 }))
+    }, 300)
+  }
+
+  const onPageChange = (page: number) => {
+    setPagination((prev) => ({ ...prev, page }))
+  }
+
+  const onPageSizeChange = (pageSize: number) => {
+    setPersistedPageSize(pageSize)
+    setPagination((prev) => ({ ...prev, page_size: pageSize, page: 1 }))
+  }
+
+  const openCreateDialog = useCallback(() => {
+    setEditing(null)
+    setShowDialog(true)
+  }, [])
+
+  const openEditDialog = useCallback((row: ChannelMonitor) => {
+    setEditing(row)
+    setShowDialog(true)
+  }, [])
+
+  const closeDialog = useCallback(() => {
+    setShowDialog(false)
+    setEditing(null)
+  }, [])
+
+  const toggleEnabled = useCallback(async (row: ChannelMonitor) => {
+    const next = !row.enabled
+    try {
+      await adminChannelMonitorAPI.update(row.id, { enabled: next })
+      setMonitors((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, enabled: next } : item)),
+      )
+    } catch (error) {
+      appStore.showError(extractApiErrorMessage(error, t('common.error')))
+    }
+  }, [appStore, t])
+
+  const handleRunNow = useCallback(async (row: ChannelMonitor) => {
+    if (runningId != null) return
+    setRunningId(row.id)
+    try {
+      const res = await adminChannelMonitorAPI.runNow(row.id)
+      setRunResults(res.results || [])
+      setShowRunResult(true)
+      appStore.showSuccess(t('admin.channelMonitor.runSuccess'))
+      void reload()
+    } catch (error) {
+      appStore.showError(extractApiErrorMessage(error, t('admin.channelMonitor.runFailed')))
+    } finally {
+      setRunningId(null)
+    }
+  }, [runningId, appStore, t, reload])
+
+  const handleDelete = useCallback((row: ChannelMonitor) => {
+    setDeleting(row)
+    setShowDeleteDialog(true)
+  }, [])
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    try {
+      await adminChannelMonitorAPI.del(deleting.id)
+      appStore.showSuccess(t('admin.channelMonitor.deleteSuccess'))
+      setShowDeleteDialog(false)
+      setDeleting(null)
+      void reload()
+    } catch (error) {
+      appStore.showError(extractApiErrorMessage(error, t('common.error')))
+    }
+  }
+
+  const tableCells = useMemo(
+    () => ({
+      name: ({ row, value }: DataTableCellContext) => (
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-gray-900 dark:text-white">{value}</span>
+          {row.api_key_decrypt_failed ? (
+            <HelpTooltip
+              content={t('admin.channelMonitor.apiKeyDecryptFailed')}
+              triggerContent={<Icon name="exclamationTriangle" size="sm" className="text-red-500" />}
+            />
+          ) : null}
+        </div>
+      ),
+      provider: ({ row }: DataTableCellContext) => (
+        <span
+          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${providerBadgeClass(row.provider)}`}
+        >
+          {providerLabel(row.provider)}
+        </span>
+      ),
+      primary_model: ({ row }: DataTableCellContext) => <MonitorPrimaryModelCell row={row} />,
+      availability_7d: ({ row }: DataTableCellContext) => (
+        <span className="text-sm text-gray-900 dark:text-gray-100">{formatAvailability(row)}</span>
+      ),
+      latency: ({ row }: DataTableCellContext) => (
+        <span className="text-sm text-gray-900 dark:text-gray-100">
+          {formatLatency(row.primary_latency_ms)}
+        </span>
+      ),
+      enabled: ({ row }: DataTableCellContext) => (
+        <Toggle modelValue={row.enabled} onUpdateModelValue={() => toggleEnabled(row)} />
+      ),
+      actions: ({ row }: DataTableCellContext) => (
+        <MonitorActionsCell
+          row={row}
+          running={runningId === row.id}
+          onRun={handleRunNow}
+          onEdit={openEditDialog}
+          onDelete={handleDelete}
+        />
+      ),
+    }),
+    [
+      t,
+      providerBadgeClass,
+      providerLabel,
+      formatAvailability,
+      formatLatency,
+      runningId,
+      toggleEnabled,
+      handleRunNow,
+      openEditDialog,
+      handleDelete,
+    ],
+  )
 
   return (
-    <PageShell title="Channel Monitor" description="Monitor upstream channel health" path="/admin/channels/monitor">
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Channel monitor</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Track the health of upstream channels and verify monitor status.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              <select
-                value={provider}
-                onChange={(event) => {
-                  setProvider(event.target.value as Provider | 'all')
-                  setPage(1)
-                }}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-200"
-              >
-                <option value="all">All providers</option>
-                <option value="openai">OpenAI</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="gemini">Gemini</option>
-              </select>
-              <select
-                value={enabled}
-                onChange={(event) => {
-                  setEnabled(event.target.value as 'all' | 'enabled' | 'disabled')
-                  setPage(1)
-                }}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-200"
-              >
-                <option value="all">All monitors</option>
-                <option value="enabled">Enabled</option>
-                <option value="disabled">Disabled</option>
-              </select>
-              <input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setPage(1)
-                }}
-                placeholder="Search monitors"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-200"
+    <AppLayout>
+      <TablePageLayout
+        filters={
+          <MonitorFiltersBar
+            loading={loading}
+            search={searchQuery}
+            provider={providerFilter}
+            enabled={enabledFilter}
+            onSearchChange={setSearchQuery}
+            onProviderChange={setProviderFilter}
+            onEnabledChange={setEnabledFilter}
+            onReload={reload}
+            onCreate={openCreateDialog}
+            onManageTemplates={() => setShowTemplateManager(true)}
+            onSearchInput={handleSearch}
+          />
+        }
+        table={
+          <DataTable
+            columns={columns}
+            data={monitors}
+            loading={loading}
+            cells={tableCells}
+            emptySlot={
+              <EmptyState
+                title={t('admin.channelMonitor.noMonitorsYet')}
+                description={t('admin.channelMonitor.createFirstMonitor')}
+                actionText={t('admin.channelMonitor.createButton')}
+                onAction={openCreateDialog}
               />
-            </div>
-          </div>
-        </div>
+            }
+          />
+        }
+        pagination={
+          pagination.total > 0 ? (
+            <Pagination
+              page={pagination.page}
+              total={pagination.total}
+              pageSize={pagination.page_size}
+              onUpdatePage={onPageChange}
+              onUpdatePageSize={onPageSizeChange}
+            />
+          ) : null
+        }
+      />
 
-        {loading ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-600">
-            Loading channel monitors...
-          </div>
-        ) : error ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
-            <p className="font-semibold">Unable to load monitors</p>
-            <p className="mt-2 text-sm">{error}</p>
-          </div>
-        ) : (
-          <>
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm text-slate-500">Showing {monitors.length} of {total} monitors</p>
-            </div>
+      <MonitorFormDialog
+        show={showDialog}
+        monitor={editing}
+        onClose={closeDialog}
+        onSaved={reload}
+      />
 
-            <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Provider</th>
-                    <th className="px-4 py-3">Primary model</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Latency</th>
-                    <th className="px-4 py-3">Availability</th>
-                    <th className="px-4 py-3">Last checked</th>
-                    <th className="px-4 py-3">Enabled</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                  {monitors.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
-                        No monitors match the current filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    monitors.map((monitor) => (
-                      <tr key={monitor.id} className="odd:bg-slate-50">
-                        <td className="px-4 py-4 font-medium text-slate-900">{monitor.name}</td>
-                        <td className="px-4 py-4 capitalize">{monitor.provider}</td>
-                        <td className="px-4 py-4">{monitor.primary_model}</td>
-                        <td className="px-4 py-4 capitalize">{monitor.primary_status || 'unknown'}</td>
-                        <td className="px-4 py-4">{monitor.primary_latency_ms != null ? `${monitor.primary_latency_ms} ms` : '—'}</td>
-                        <td className="px-4 py-4">{monitor.availability_7d.toFixed(1)}%</td>
-                        <td className="px-4 py-4">{formatDate(monitor.last_checked_at)}</td>
-                        <td className="px-4 py-4">{monitor.enabled ? 'Yes' : 'No'}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <MonitorTemplateManagerDialog
+        show={showTemplateManager}
+        onClose={() => setShowTemplateManager(false)}
+        onUpdated={reload}
+      />
 
-            <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">Page {page} of {totalPages}</p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                  disabled={page === 1}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                  disabled={page === totalPages}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </PageShell>
+      <MonitorRunResultDialog
+        show={showRunResult}
+        results={runResults}
+        onClose={() => setShowRunResult(false)}
+      />
+
+      <ConfirmDialog
+        show={showDeleteDialog}
+        title={t('common.delete')}
+        message={deleteConfirmMessage}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
+    </AppLayout>
   )
 }

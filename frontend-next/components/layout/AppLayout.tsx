@@ -6,28 +6,31 @@
  * Verbatim port of AppLayout.vue: background decoration + sidebar + header +
  * main content, with the main column offset to make room for the collapsible
  * sidebar on large screens.
- *
- * The onboarding tour (`useOnboardingTour`) is a separate subsystem not yet
- * migrated; the onboarding store's replay callback is registered as a no-op
- * placeholder so the header's "restart tour" button degrades gracefully.
  */
 
 import { useEffect } from 'react'
 import { useApp } from '@/context/AppContext'
+import { useAuth } from '@/context/AuthContext'
 import { onboardingStore } from '@/lib/stores/onboarding'
+import { useOnboardingTour } from '@/lib/useOnboardingTour'
 import AppSidebar from './AppSidebar'
 import AppHeader from './AppHeader'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed } = useApp()
+  const { isAdmin } = useAuth()
+
+  const { replayTour } = useOnboardingTour({
+    storageKey: isAdmin ? 'admin_guide' : 'user_guide',
+    autoStart: true,
+  })
 
   useEffect(() => {
-    // Placeholder until the interactive onboarding tour is ported.
-    onboardingStore.setReplayCallback(() => {})
+    onboardingStore.setReplayCallback(replayTour)
     return () => {
       onboardingStore.setReplayCallback(null)
     }
-  }, [])
+  }, [replayTour])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-950">

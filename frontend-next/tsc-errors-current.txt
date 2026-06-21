@@ -1,0 +1,35 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+components/admin/settings/SettingsFormBody.tsx(181,202): error TS1005: '{' expected.
+components/admin/settings/SettingsFormBody.tsx(182,56): error TS1005: '}' expected.
+components/admin/settings/SettingsFormBody.tsx(812,7): error TS2657: JSX expressions must have one parent element.
+components/admin/settings/SettingsFormBody.tsx(813,297): error TS1005: '}' expected.
+components/admin/settings/SettingsFormBody.tsx(813,322): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(813,323): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/admin/settings/SettingsFormBody.tsx(813,417): error TS17002: Expected corresponding JSX closing tag for 'div'.
+components/admin/settings/SettingsFormBody.tsx(817,44): error TS1109: Expression expected.
+components/admin/settings/SettingsFormBody.tsx(818,68): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(845,148): error TS1005: '}' expected.
+components/admin/settings/SettingsFormBody.tsx(846,51): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(846,172): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/admin/settings/SettingsFormBody.tsx(846,456): error TS17002: Expected corresponding JSX closing tag for 'div'.
+components/admin/settings/SettingsFormBody.tsx(865,63): error TS1005: '}' expected.
+components/admin/settings/SettingsFormBody.tsx(866,78): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(866,79): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/admin/settings/SettingsFormBody.tsx(869,68): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(874,260): error TS1005: ')' expected.
+components/admin/settings/SettingsFormBody.tsx(879,7): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(879,16): error TS17015: Expected corresponding closing tag for JSX fragment.
+components/admin/settings/SettingsFormBody.tsx(879,20): error TS1109: Expression expected.
+components/admin/settings/SettingsFormBody.tsx(880,1): error TS2657: JSX expressions must have one parent element.
+components/admin/settings/SettingsFormBody.tsx(886,20): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/admin/settings/SettingsFormBody.tsx(900,66): error TS1005: ';' expected.
+components/admin/settings/SettingsFormBody.tsx(901,1): error TS2657: JSX expressions must have one parent element.
+components/admin/settings/SettingsFormBody.tsx(1366,5): error TS1128: Declaration or statement expected.
+components/admin/settings/SettingsFormBody.tsx(1366,7): error TS1109: Expression expected.
+components/admin/settings/SettingsFormBody.tsx(1367,3): error TS1109: Expression expected.
