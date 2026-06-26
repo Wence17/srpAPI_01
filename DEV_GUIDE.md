@@ -8,9 +8,9 @@
 |------|------|
 | **上游仓库** | Wei-Shaw/sub2api |
 | **Fork 仓库** | bayma888/sub2api-bmai |
-| **技术栈** | Go 后端 (Ent ORM + Gin) + Vue3 前端 (pnpm) |
-| **数据库** | PostgreSQL 16 + Redis |
-| **包管理** | 后端: go modules, 前端: **pnpm**（不是 npm） |
+| **技术栈** | Go 后端 (Ent ORM + Gin) + Next.js 前端 (`apps/web`, npm) |
+| **数据库** | PostgreSQL + Redis |
+| **包管理** | 后端: go modules, 前端: **npm**（根目录 workspace，`apps/web`） |
 
 ## 二、本地环境配置
 
@@ -36,9 +36,6 @@
 ```bash
 # golangci-lint v2.7
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.7
-
-# pnpm (前端包管理)
-npm install -g pnpm
 ```
 
 ## 三、CI/CD 流水线
@@ -53,57 +50,42 @@ npm install -g pnpm
 
 ### CI 要求
 
-- Go 版本必须是 **1.25.7**
-- 前端使用 `pnpm install --frozen-lockfile`，必须提交 `pnpm-lock.yaml`
+- Go 版本必须是 **1.26.4**（见 `apps/api/go.mod`）
+- 前端在根目录 `npm ci`，Next.js 类型检查在 CI `web` job 中运行
 
 ### 本地测试命令
 
 ```bash
 # 后端单元测试
-cd backend && go test -tags=unit ./...
+cd apps/api && go test -tags=unit ./...
 
 # 后端集成测试
-cd backend && go test -tags=integration ./...
+cd apps/api && go test -tags=integration ./...
 
 # 代码质量检查
-cd backend && golangci-lint run ./...
+cd apps/api && golangci-lint run ./...
 
-# 前端依赖安装（必须用 pnpm）
-cd frontend && pnpm install
+# 前端类型检查
+npm run css:build -w apps/web
+npx tsc --noEmit -p apps/web/tsconfig.json
 ```
 
 ## 四、常见坑点 & 解决方案
 
-### 坑 1：pnpm-lock.yaml 必须同步提交
+### 坑 1：npm 依赖与 lockfile
 
-**问题**：`package.json` 新增依赖后，CI 的 `pnpm install --frozen-lockfile` 失败。
-
-**原因**：上游 CI 使用 pnpm，lock 文件不同步会报错。
+**问题**：根目录或 `apps/web` 新增依赖后，未更新 `package-lock.json`，CI 的 `npm ci` 失败。
 
 **解决**：
 ```bash
-cd frontend
-pnpm install  # 更新 pnpm-lock.yaml
-git add pnpm-lock.yaml
-git commit -m "chore: update pnpm-lock.yaml"
+npm install
+git add package-lock.json
+git commit -m "chore: update package-lock.json"
 ```
 
 ---
 
-### 坑 2：npm 和 pnpm 的 node_modules 冲突
-
-**问题**：之前用 npm 装过 `node_modules`，pnpm install 报 `EPERM` 错误。
-
-**解决**：
-```bash
-cd frontend
-rm -rf node_modules  # 或 PowerShell: Remove-Item -Recurse -Force node_modules
-pnpm install
-```
-
----
-
-### 坑 3：PowerShell 中 bcrypt hash 的 `$` 被转义
+### 坑 2：PowerShell 中 bcrypt hash 的 `$` 被转义
 
 **问题**：bcrypt hash 格式如 `$2a$10$xxx...`，PowerShell 把 `$2a` 当变量解析，导致数据丢失。
 
@@ -281,23 +263,19 @@ git rebase upstream/main
 ### 前端操作
 
 ```bash
-# 安装依赖（必须用 pnpm）
-cd frontend
-pnpm install
-
-# 开发服务器
-pnpm dev
-
-# 构建
-pnpm build
+# 从仓库根目录
+npm install
+npm run dev:web      # 仅 Next.js
+npm run dev:apps     # Next.js + Go API（需 Postgres/Redis）
+npm run build:web
 ```
 
 ### 后端操作
 
 ```bash
 # 运行服务器
-cd backend
-go run ./cmd/server/
+cd apps/api
+go run ./cmd/server
 
 # 生成 Ent 代码
 go generate ./ent
@@ -313,34 +291,24 @@ golangci-lint run ./...
 ## 六、项目结构速览
 
 ```
-sub2api-bmai/
-├── backend/
-│   ├── cmd/server/          # 主程序入口
-│   ├── ent/                 # Ent ORM 生成代码
-│   │   └── schema/          # 数据库 Schema 定义
-│   ├── internal/
-│   │   ├── handler/         # HTTP 处理器
-│   │   ├── service/         # 业务逻辑
-│   │   ├── repository/      # 数据访问层
-│   │   └── server/          # 服务器配置
-│   ├── migrations/          # 数据库迁移脚本
-│   └── config.yaml          # 配置文件
-├── frontend/
-│   ├── src/
-│   │   ├── api/             # API 调用
-│   │   ├── components/      # Vue 组件
-│   │   ├── views/           # 页面视图
-│   │   ├── types/           # TypeScript 类型
-│   │   └── i18n/            # 国际化
-│   ├── package.json         # 依赖配置
-│   └── pnpm-lock.yaml       # pnpm 锁文件（必须提交）
-└── .claude/
-    └── CLAUDE.md            # 本文档
+sub2api/
+├── apps/
+│   ├── api/                 # Go API + gateway
+│   │   ├── cmd/server/      # 主程序入口
+│   │   ├── ent/             # Ent ORM 生成代码
+│   │   ├── internal/        # handler, service, repository, ...
+│   │   ├── migrations/
+│   │   └── config.yaml
+│   └── web/                 # Next.js UI
+├── deploy/                  # Docker Compose
+├── package.json             # 根目录 dev 脚本
+└── MONOREPO.md
 ```
+
+> 旧版 Vue `frontend/` 保留在 `main` 分支作参考；本分支已移除。
 
 ## 七、参考资源
 
 - [上游仓库](https://github.com/Wei-Shaw/sub2api)
 - [Ent 文档](https://entgo.io/docs/getting-started)
-- [Vue3 文档](https://vuejs.org/)
-- [pnpm 文档](https://pnpm.io/)
+- [Next.js 文档](https://nextjs.org/docs)

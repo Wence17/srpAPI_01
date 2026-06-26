@@ -112,7 +112,7 @@ When using Docker Compose with `AUTO_SETUP=true`:
 
 1. On first run, the system automatically:
    - Connects to PostgreSQL and Redis
-   - Applies database migrations (SQL files in `backend/migrations/*.sql`) and records them in `schema_migrations`
+   - Applies database migrations (SQL files in `apps/api/migrations/*.sql`) and records them in `schema_migrations`
    - Generates JWT secret (if not provided)
    - Creates admin account (password auto-generated if not provided)
    - Writes config.yaml

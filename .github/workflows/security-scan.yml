@@ -18,41 +18,35 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: backend/go.mod
+          go-version-file: apps/api/go.mod
           check-latest: false
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: apps/api/go.sum
       - name: Verify Go version
         run: |
           go version | grep -q 'go1.26.4'
       - name: Run govulncheck
-        working-directory: backend
+        working-directory: apps/api
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
-  frontend-security:
+  web-security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        working-directory: frontend
-        run: pnpm install --frozen-lockfile
-      - name: Run pnpm audit
-        working-directory: frontend
+        run: npm ci
+      - name: Run npm audit (apps/web workspace)
         run: |
-          pnpm audit --prod --audit-level=high --json > audit.json || true
+          npm audit --workspace=apps/web --omit=dev --audit-level=high --json > web-audit.json || true
       - name: Check audit exceptions
         run: |
           python tools/check_pnpm_audit_exceptions.py \
-            --audit frontend/audit.json \
+            --audit web-audit.json \
             --exceptions .github/audit-exceptions.yml

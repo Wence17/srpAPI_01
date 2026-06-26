@@ -1,11 +1,14 @@
 # =============================================================================
 # Sub2API Docker Compose - Local Development Build
 # =============================================================================
-# Build from local source code for testing changes.
+# Build from local source: API (Go) + Web (Next.js) + Postgres + Redis
 #
-# Usage:
-#   cd deploy
-#   docker compose -f docker-compose.dev.yml up --build
+# Usage (from repo root):
+#   cp .env.example .env
+#   docker compose --env-file .env -f deploy/docker-compose.dev.yml up --build
+#
+# UI:  http://localhost:${WEB_PORT:-3000}
+# API: http://localhost:${SERVER_PORT:-8080}
 # =============================================================================
 
 services:
@@ -15,6 +18,8 @@ services:
       dockerfile: Dockerfile
     container_name: sub2api-dev
     restart: unless-stopped
+    env_file:
+      - ../.env
     ports:
       - "${BIND_HOST:-127.0.0.1}:${SERVER_PORT:-8080}:8080"
     volumes:
@@ -40,7 +45,6 @@ services:
       - JWT_SECRET=${JWT_SECRET:-}
       - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:-}
       - TZ=${TZ:-Asia/Shanghai}
-      # OpenAI HTTP upstream protocol/timeout
       - GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT=${GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT:-0}
       - GATEWAY_OPENAI_HTTP2_ENABLED=${GATEWAY_OPENAI_HTTP2_ENABLED:-true}
       - GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1=${GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1:-true}
@@ -68,10 +72,33 @@ services:
       retries: 3
       start_period: 30s
 
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        BACKEND_URL: http://sub2api:8080
+    container_name: sub2api-web-dev
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    environment:
+      - BACKEND_URL=http://sub2api:8080
+      - NODE_ENV=production
+    depends_on:
+      sub2api:
+        condition: service_healthy
+    networks:
+      - sub2api-network
+
   postgres:
     image: postgres:18-alpine
     container_name: sub2api-postgres-dev
     restart: unless-stopped
+    env_file:
+      - ../.env
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     environment:
@@ -93,6 +120,8 @@ services:
     image: redis:8-alpine
     container_name: sub2api-redis-dev
     restart: unless-stopped
+    env_file:
+      - ../.env
     volumes:
       - ./redis_data:/data
     command: >
