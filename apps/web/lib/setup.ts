@@ -6,11 +6,14 @@ import axios from 'axios'
 // Create a separate client for setup endpoints (not under /api/v1)
 const setupClient = axios.create({
   baseURL: '',
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+/** Install runs migrations + schema init; allow several minutes on slow dev machines. */
+const INSTALL_TIMEOUT_MS = 180000
 
 export interface SetupStatus {
   needs_setup: boolean
@@ -83,6 +86,8 @@ export async function testRedis(config: RedisConfig): Promise<void> {
  * Perform installation
  */
 export async function install(config: InstallRequest): Promise<InstallResponse> {
-  const response = await setupClient.post('/setup/install', config)
+  const response = await setupClient.post('/setup/install', config, {
+    timeout: INSTALL_TIMEOUT_MS,
+  })
   return response.data.data
 }
